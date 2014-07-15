@@ -125,6 +125,11 @@ final class PhabricatorPeopleProfilePictureController
       ->setViewer($viewer)
       ->withUserPHIDs(array($user->getPHID()))
       ->needImages(true)
+      ->requireCapabilities(
+        array(
+          PhabricatorPolicyCapability::CAN_VIEW,
+          PhabricatorPolicyCapability::CAN_EDIT,
+        ))
       ->execute();
 
     foreach ($accounts as $account) {
@@ -155,7 +160,7 @@ final class PhabricatorPeopleProfilePictureController
     if (PhabricatorEnv::getEnvConfig('security.allow-outbound-http')) {
       $emails = id(new PhabricatorUserEmail())->loadAllWhere(
         'userPHID = %s ORDER BY address',
-        $viewer->getPHID());
+        $user->getPHID());
 
       $futures = array();
       foreach ($emails as $email_object) {
@@ -258,11 +263,11 @@ final class PhabricatorPeopleProfilePictureController
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     $upload_form = id(new AphrontFormView())
-      ->setUser($user)
+      ->setUser($viewer)
       ->setEncType('multipart/form-data')
       ->appendChild(
         id(new AphrontFormFileControl())
@@ -276,15 +281,6 @@ final class PhabricatorPeopleProfilePictureController
           ->addCancelButton($profile_uri)
           ->setValue(pht('Upload Picture')));
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())->setErrors($errors);
-    }
-
-    $form_box = id(new PHUIObjectBoxView())
-      ->setHeaderText($title)
-      ->setFormError($errors)
-      ->setForm($form);
-
     $upload_box = id(new PHUIObjectBoxView())
       ->setHeaderText(pht('Upload New Picture'))
       ->setForm($upload_form);
@@ -297,7 +293,6 @@ final class PhabricatorPeopleProfilePictureController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 }

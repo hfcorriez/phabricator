@@ -16,19 +16,25 @@ final class ConduitAPI_releephwork_record_Method
    *
    * When the daemons discover this commit in the repository with
    * DifferentialReleephRequestFieldSpecification, we'll be able to record the
-   * commit's PHID as well.  That process is slow though, and we don't want to
+   * commit's PHID as well. That process is slow though, and we don't want to
    * wait a whole minute before marking something as cleanly picked or
    * reverted.
    */
   public function getMethodDescription() {
-    return "Record whether we committed a pick or revert ".
-      "to the upstream repository.";
+    return 'Record whether we committed a pick or revert '.
+      'to the upstream repository.';
   }
 
   public function defineParamTypes() {
+    $action_const = $this->formatStringConstants(
+      array(
+        'pick',
+        'revert',
+      ));
+
     return array(
       'requestPHID'       => 'required string',
-      'action'            => 'required enum<"pick", "revert">',
+      'action'            => 'required '.$action_const,
       'commitIdentifier'  => 'required string',
     );
   }

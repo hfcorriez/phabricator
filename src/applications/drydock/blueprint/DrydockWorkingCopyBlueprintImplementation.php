@@ -7,8 +7,12 @@ final class DrydockWorkingCopyBlueprintImplementation
     return true;
   }
 
+  public function getBlueprintName() {
+    return pht('Working Copy');
+  }
+
   public function getDescription() {
-    return pht('Allocates out working copies of repositories.');
+    return pht('Allows Drydock to check out working copies of repositories.');
   }
 
   protected function canAllocateLease(
@@ -49,7 +53,7 @@ final class DrydockWorkingCopyBlueprintImplementation
       case PhabricatorRepositoryType::REPOSITORY_TYPE_GIT:
         break;
       default:
-        throw new Exception("Unsupported VCS!");
+        throw new Exception('Unsupported VCS!');
     }
 
     // TODO: Policy stuff here too.

@@ -14,6 +14,14 @@ final class PhabricatorApplicationAuth extends PhabricatorApplication {
     return 'authentication';
   }
 
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return $viewer->getIsAdmin();
+  }
+
+  public function getShortDescription() {
+    return pht('Login/Registration');
+  }
+
   public function getHelpURI() {
     // NOTE: Although reasonable help exists for this in "Configuring Accounts
     // and Registration", specifying a help URI here means we get the menu
@@ -36,10 +44,12 @@ final class PhabricatorApplicationAuth extends PhabricatorApplication {
       $item = id(new PHUIListItemView())
         ->addClass('core-menu-item')
         ->setName(pht('Log Out'))
-        ->setIcon('power')
+        ->setIcon('logout-sm')
         ->setWorkflow(true)
         ->setHref('/logout/')
-        ->setSelected(($controller instanceof PhabricatorLogoutController));
+        ->setSelected(($controller instanceof PhabricatorLogoutController))
+        ->setAural(pht('Log Out'))
+        ->setOrder(900);
       $items[] = $item;
     } else {
       if ($controller instanceof PhabricatorAuthController) {
@@ -51,7 +61,9 @@ final class PhabricatorApplicationAuth extends PhabricatorApplication {
           ->setName(pht('Log In'))
           // TODO: Login icon?
           ->setIcon('power')
-          ->setHref('/auth/start/');
+          ->setHref('/auth/start/')
+          ->setAural(pht('Log In'))
+          ->setOrder(900);
         $items[] = $item;
       }
     }
@@ -74,15 +86,23 @@ final class PhabricatorApplicationAuth extends PhabricatorApplication {
           '(?P<action>enable|disable)/(?P<id>\d+)/' =>
             'PhabricatorAuthDisableController',
         ),
-        'login/(?P<pkey>[^/]+)/' => 'PhabricatorAuthLoginController',
+        'login/(?P<pkey>[^/]+)/(?:(?P<extra>[^/]+)/)?' =>
+          'PhabricatorAuthLoginController',
         'register/(?:(?P<akey>[^/]+)/)?' => 'PhabricatorAuthRegisterController',
         'start/' => 'PhabricatorAuthStartController',
         'validate/' => 'PhabricatorAuthValidateController',
+        'finish/' => 'PhabricatorAuthFinishController',
         'unlink/(?P<pkey>[^/]+)/' => 'PhabricatorAuthUnlinkController',
         '(?P<action>link|refresh)/(?P<pkey>[^/]+)/'
           => 'PhabricatorAuthLinkController',
         'confirmlink/(?P<akey>[^/]+)/'
           => 'PhabricatorAuthConfirmLinkController',
+        'session/terminate/(?P<id>[^/]+)/'
+          => 'PhabricatorAuthTerminateSessionController',
+        'session/downgrade/'
+          => 'PhabricatorAuthDowngradeSessionController',
+        'multifactor/'
+          => 'PhabricatorAuthNeedsMultiFactorController',
       ),
 
       '/oauth/(?P<provider>\w+)/login/'
@@ -91,7 +111,11 @@ final class PhabricatorApplicationAuth extends PhabricatorApplication {
       '/login/' => array(
         '' => 'PhabricatorAuthStartController',
         'email/' => 'PhabricatorEmailLoginController',
-        'etoken/(?P<token>\w+)/' => 'PhabricatorEmailTokenController',
+        'once/'.
+          '(?P<type>[^/]+)/'.
+          '(?P<id>\d+)/'.
+          '(?P<key>[^/]+)/'.
+          '(?:(?P<emailID>\d+)/)?' => 'PhabricatorAuthOneTimeLoginController',
         'refresh/' => 'PhabricatorRefreshCSRFController',
         'mustverify/' => 'PhabricatorMustVerifyEmailController',
       ),

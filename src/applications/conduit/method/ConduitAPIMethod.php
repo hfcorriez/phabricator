@@ -1,9 +1,8 @@
 <?php
 
 /**
- *
  * @task  status  Method Status
- * @group conduit
+ * @task  pager   Paging Results
  */
 abstract class ConduitAPIMethod
   extends Phobject
@@ -137,33 +136,69 @@ abstract class ConduitAPIMethod
     return str_replace('_', '.', $method_fragment);
   }
 
-  protected function validateHost($host) {
-    if (!$host) {
-      // If the client doesn't send a host key, don't complain. We should in
-      // the future, but this change isn't severe enough to bump the protocol
-      // version.
+  protected function formatStringConstants($constants) {
+    foreach ($constants as $key => $value) {
+      $constants[$key] = '"'.$value.'"';
+    }
+    $constants = implode(', ', $constants);
+    return 'string-constant<'.$constants.'>';
+  }
 
-      // TODO: Remove this once the protocol version gets bumped past 2 (i.e.,
-      // require the host key be present and valid).
-      return;
+
+/* -(  Paging Results  )----------------------------------------------------- */
+
+
+  /**
+   * @task pager
+   */
+  protected function getPagerParamTypes() {
+    return array(
+      'before'            => 'optional string',
+      'after'             => 'optional string',
+      'limit'             => 'optional int (default = 100)',
+    );
+  }
+
+
+  /**
+   * @task pager
+   */
+  protected function newPager(ConduitAPIRequest $request) {
+    $limit = $request->getValue('limit', 100);
+    $limit = min(1000, $limit);
+    $limit = max(1, $limit);
+
+    $pager = id(new AphrontCursorPagerView())
+      ->setPageSize($limit);
+
+    $before_id = $request->getValue('before');
+    if ($before_id !== null) {
+      $pager->setBeforeID($before_id);
     }
 
-    // NOTE: Compare domains only so we aren't sensitive to port specification
-    // or omission.
-
-    $host = new PhutilURI($host);
-    $host = $host->getDomain();
-
-    $self = new PhutilURI(PhabricatorEnv::getURI('/'));
-    $self = $self->getDomain();
-
-    if ($self !== $host) {
-      throw new Exception(
-        "Your client is connecting to this install as '{$host}', but it is ".
-        "configured as '{$self}'. The client and server must use the exact ".
-        "same URI to identify the install. Edit your .arcconfig or ".
-        "phabricator/conf so they agree on the URI for the install.");
+    $after_id = $request->getValue('after');
+    if ($after_id !== null) {
+      $pager->setAfterID($after_id);
     }
+
+    return $pager;
+  }
+
+
+  /**
+   * @task pager
+   */
+  protected function addPagerResults(
+    array $results,
+    AphrontCursorPagerView $pager) {
+
+    $results['cursor'] = array(
+      'limit' => $pager->getPageSize(),
+      'after' => $pager->getNextPageID(),
+      'before' => $pager->getPrevPageID(),
+    );
+
+    return $results;
   }
 
 
@@ -204,5 +239,6 @@ abstract class ConduitAPIMethod
   public function describeAutomaticCapability($capability) {
     return null;
   }
+
 
 }

@@ -10,21 +10,14 @@ $args = new PhutilArgumentParser($argv);
 $args->setTagline('manage daemons');
 $args->setSynopsis(<<<EOSYNOPSIS
 **phd** __command__ [__options__]
-    Manage Phabricator daeons.
+    Manage Phabricator daemons.
 
 EOSYNOPSIS
   );
 $args->parseStandardArguments();
-$workflows = array(
-  new PhabricatorDaemonManagementListWorkflow(),
-  new PhabricatorDaemonManagementStatusWorkflow(),
-  new PhabricatorDaemonManagementStartWorkflow(),
-  new PhabricatorDaemonManagementStopWorkflow(),
-  new PhabricatorDaemonManagementRestartWorkflow(),
-  new PhabricatorDaemonManagementLaunchWorkflow(),
-  new PhabricatorDaemonManagementDebugWorkflow(),
-  new PhabricatorDaemonManagementLogWorkflow(),
-  new PhutilHelpArgumentWorkflow(),
-);
 
+$workflows = id(new PhutilSymbolLoader())
+  ->setAncestorClass('PhabricatorDaemonManagementWorkflow')
+  ->loadObjects();
+$workflows[] = new PhutilHelpArgumentWorkflow();
 $args->parseWorkflows($workflows);

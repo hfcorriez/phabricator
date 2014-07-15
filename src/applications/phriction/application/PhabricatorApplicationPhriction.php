@@ -14,8 +14,12 @@ final class PhabricatorApplicationPhriction extends PhabricatorApplication {
     return 'phriction';
   }
 
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return true;
+  }
+
   public function getHelpURI() {
-    return PhabricatorEnv::getDoclink('article/Phriction_User_Guide.html');
+    return PhabricatorEnv::getDoclink('Phriction User Guide');
   }
 
   public function getTitleGlyph() {
@@ -58,13 +62,8 @@ final class PhabricatorApplicationPhriction extends PhabricatorApplication {
     );
   }
 
-  public function getApplicationGroup() {
-    return self::GROUP_COMMUNICATION;
-  }
-
   public function getApplicationOrder() {
     return 0.140;
   }
 
 }
-

@@ -14,8 +14,8 @@ final class PhabricatorApplicationManiphest extends PhabricatorApplication {
     return 'maniphest';
   }
 
-  public function getApplicationGroup() {
-    return self::GROUP_CORE;
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return true;
   }
 
   public function getApplicationOrder() {
@@ -26,10 +26,6 @@ final class PhabricatorApplicationManiphest extends PhabricatorApplication {
     return array(
       new ManiphestTask(),
     );
-  }
-
-  public function getQuickCreateURI() {
-    return $this->getBaseURI().'task/create/';
   }
 
   public function getEventListeners() {
@@ -77,7 +73,7 @@ final class PhabricatorApplicationManiphest extends PhabricatorApplication {
 
     $query = id(new ManiphestTaskQuery())
       ->setViewer($user)
-      ->withStatus(ManiphestTaskQuery::STATUS_OPEN)
+      ->withStatuses(ManiphestTaskStatus::getOpenStatusConstants())
       ->withOwners(array($user->getPHID()));
     $count = count($query->execute());
 
@@ -88,6 +84,18 @@ final class PhabricatorApplicationManiphest extends PhabricatorApplication {
       ->setCount($count);
 
     return $status;
+  }
+
+  public function getQuickCreateItems(PhabricatorUser $viewer) {
+    $items = array();
+
+    $item = id(new PHUIListItemView())
+      ->setName(pht('Maniphest Task'))
+      ->setIcon('fa-anchor')
+      ->setHref($this->getBaseURI().'task/create/');
+    $items[] = $item;
+
+    return $items;
   }
 
   protected function getCustomCapabilities() {
@@ -116,4 +124,3 @@ final class PhabricatorApplicationManiphest extends PhabricatorApplication {
   }
 
 }
-

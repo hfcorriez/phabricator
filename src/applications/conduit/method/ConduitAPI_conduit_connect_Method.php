@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
 
   public function shouldRequireAuthentication() {
@@ -14,7 +11,7 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
   }
 
   public function getMethodDescription() {
-    return "Connect a session-based client.";
+    return 'Connect a session-based client.';
   }
 
   public function defineParamTypes() {
@@ -25,7 +22,7 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
       'user'                => 'optional string',
       'authToken'           => 'optional int',
       'authSignature'       => 'optional string',
-      'host'                => 'required string',
+      'host'                => 'deprecated',
     );
   }
 
@@ -35,32 +32,32 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
 
   public function defineErrorTypes() {
     return array(
-      "ERR-BAD-VERSION" =>
-        "Client/server version mismatch. Upgrade your server or downgrade ".
-        "your client.",
-      "NEW-ARC-VERSION" =>
-        "Client/server version mismatch. Upgrade your client.",
-      "ERR-UNKNOWN-CLIENT" =>
-        "Client is unknown.",
-      "ERR-INVALID-USER" =>
-        "The username you are attempting to authenticate with is not valid.",
-      "ERR-INVALID-CERTIFICATE" =>
-        "Your authentication certificate for this server is invalid.",
-      "ERR-INVALID-TOKEN" =>
+      'ERR-BAD-VERSION' =>
+        'Client/server version mismatch. Upgrade your server or downgrade '.
+        'your client.',
+      'NEW-ARC-VERSION' =>
+        'Client/server version mismatch. Upgrade your client.',
+      'ERR-UNKNOWN-CLIENT' =>
+        'Client is unknown.',
+      'ERR-INVALID-USER' =>
+        'The username you are attempting to authenticate with is not valid.',
+      'ERR-INVALID-CERTIFICATE' =>
+        'Your authentication certificate for this server is invalid.',
+      'ERR-INVALID-TOKEN' =>
         "The challenge token you are authenticating with is outside of the ".
         "allowed time range. Either your system clock is out of whack or ".
         "you're executing a replay attack.",
-      "ERR-NO-CERTIFICATE" => "This server requires authentication.",
+      'ERR-NO-CERTIFICATE' => 'This server requires authentication.',
     );
   }
 
   protected function execute(ConduitAPIRequest $request) {
-
-    $this->validateHost($request->getValue('host'));
-
     $client = $request->getValue('client');
     $client_version = (int)$request->getValue('clientVersion');
     $client_description = (string)$request->getValue('clientDescription');
+    // TODO: This should be character-oriented, not display-oriented.
+    // See T3307.
+    $client_description = phutil_utf8_shorten($client_description, 255);
     $username = (string)$request->getValue('user');
 
     // Log the connection, regardless of the outcome of checks below.
@@ -108,9 +105,7 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
     $token = $request->getValue('authToken');
     $signature = $request->getValue('authSignature');
 
-    $user = id(new PhabricatorUser())->loadOneWhere(
-      'username = %s',
-      $username);
+    $user = id(new PhabricatorUser())->loadOneWhere('username = %s', $username);
     if (!$user) {
       throw new ConduitException('ERR-INVALID-USER');
     }
@@ -123,14 +118,14 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
         throw id(new ConduitException('ERR-INVALID-TOKEN'))
           ->setErrorDescription(
             pht(
-              "The request you submitted is signed with a timestamp, but that ".
-              "timestamp is not within %s of the current time. The ".
-              "signed timestamp is %s (%s), and the current server time is ".
-              "%s (%s). This is a difference of %s seconds, but the ".
-              "timestamp must differ from the server time by no more than ".
-              "%s seconds. Your client or server clock may not be set ".
-              "correctly.",
-              phabricator_format_relative_time($threshold),
+              'The request you submitted is signed with a timestamp, but that '.
+              'timestamp is not within %s of the current time. The '.
+              'signed timestamp is %s (%s), and the current server time is '.
+              '%s (%s). This is a difference of %s seconds, but the '.
+              'timestamp must differ from the server time by no more than '.
+              '%s seconds. Your client or server clock may not be set '.
+              'correctly.',
+              phutil_format_relative_time($threshold),
               $token,
               date('r', $token),
               $now,
@@ -142,7 +137,10 @@ final class ConduitAPI_conduit_connect_Method extends ConduitAPIMethod {
       if ($valid != $signature) {
         throw new ConduitException('ERR-INVALID-CERTIFICATE');
       }
-      $session_key = $user->establishSession('conduit');
+      $session_key = id(new PhabricatorAuthSessionEngine())->establishSession(
+        PhabricatorAuthSession::TYPE_CONDUIT,
+        $user->getPHID(),
+        $partial = false);
     } else {
       throw new ConduitException('ERR-NO-CERTIFICATE');
     }

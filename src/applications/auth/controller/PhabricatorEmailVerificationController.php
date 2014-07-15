@@ -36,6 +36,8 @@ final class PhabricatorEmailVerificationController
       $user->getPHID(),
       $this->code);
 
+    $submit = null;
+
     if (!$email) {
       $title = pht('Unable to Verify Email');
       $content = pht(
@@ -49,37 +51,35 @@ final class PhabricatorEmailVerificationController
       $content = pht(
         'This email address has already been verified.');
       $continue = pht('Continue to Phabricator');
-    } else {
-      $guard = AphrontWriteGuard::beginScopedUnguardedWrites();
-        $email->openTransaction();
+    } else if ($request->isFormPost()) {
 
-          $email->setIsVerified(1);
-          $email->save();
-
-          // If the user just verified their primary email address, mark their
-          // account as email verified.
-          $user_primary = $user->loadPrimaryEmail();
-          if ($user_primary->getID() == $email->getID()) {
-            $user->setIsEmailVerified(1);
-            $user->save();
-          }
-
-        $email->saveTransaction();
-      unset($guard);
+      id(new PhabricatorUserEditor())
+        ->setActor($user)
+        ->verifyEmail($user, $email);
 
       $title = pht('Address Verified');
       $content = pht(
         'The email address %s is now verified.',
         phutil_tag('strong', array(), $email->getAddress()));
       $continue = pht('Continue to Phabricator');
+    } else {
+      $title = pht('Verify Email Address');
+      $content = pht(
+        'Verify this email address (%s) and attach it to your account?',
+        phutil_tag('strong', array(), $email->getAddress()));
+      $continue = pht('Cancel');
+      $submit = pht('Verify %s', $email->getAddress());
     }
 
     $dialog = id(new AphrontDialogView())
       ->setUser($user)
       ->setTitle($title)
-      ->setMethod('GET')
       ->addCancelButton('/', $continue)
       ->appendChild($content);
+
+    if ($submit) {
+      $dialog->addSubmitButton($submit);
+    }
 
     $crumbs = $this->buildApplicationCrumbs();
     $crumbs->addTextCrumb(pht('Verify Email'));
@@ -91,7 +91,6 @@ final class PhabricatorEmailVerificationController
       ),
       array(
         'title' => pht('Verify Email'),
-        'device' => true,
       ));
   }
 

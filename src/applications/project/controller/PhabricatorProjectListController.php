@@ -1,8 +1,7 @@
 <?php
 
 final class PhabricatorProjectListController
-  extends PhabricatorProjectController
-  implements PhabricatorApplicationSearchResultsControllerInterface {
+  extends PhabricatorProjectController {
 
   private $queryKey;
 
@@ -24,31 +23,21 @@ final class PhabricatorProjectListController
     return $this->delegateToController($controller);
   }
 
-  public function renderResultsList(
-    array $projects,
-    PhabricatorSavedQuery $query) {
-    assert_instances_of($projects, 'PhabricatorProject');
-    $viewer = $this->getRequest()->getUser();
+  public function buildApplicationCrumbs() {
+    $crumbs = parent::buildApplicationCrumbs();
 
-    $list = new PHUIObjectItemListView();
-    $list->setUser($viewer);
-    foreach ($projects as $project) {
-      $id = $project->getID();
+    $can_create = $this->hasApplicationCapability(
+      ProjectCapabilityCreateProjects::CAPABILITY);
 
-      $item = id(new PHUIObjectItemView())
-        ->setHeader($project->getName())
-        ->setHref($this->getApplicationURI("view/{$id}/"));
+    $crumbs->addAction(
+      id(new PHUIListItemView())
+        ->setName(pht('Create Project'))
+        ->setHref($this->getApplicationURI('create/'))
+        ->setIcon('fa-plus-square')
+        ->setWorkflow(!$can_create)
+        ->setDisabled(!$can_create));
 
-      if ($project->getStatus() == PhabricatorProjectStatus::STATUS_ARCHIVED) {
-        $item->addIcon('delete-grey', pht('Archived'));
-        $item->setDisabled(true);
-      }
-
-
-      $list->addItem($item);
-    }
-
-    return $list;
+    return $crumbs;
   }
 
 }

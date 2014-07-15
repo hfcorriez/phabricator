@@ -5,11 +5,11 @@
  *
  * @task compose  Composition
  * @task render   Rendering
- * @group metamta
  */
 final class PhabricatorMetaMTAMailBody {
 
   private $sections = array();
+  private $attachments = array();
 
 
 /* -(  Composition  )-------------------------------------------------------- */
@@ -88,6 +88,19 @@ final class PhabricatorMetaMTAMailBody {
   }
 
 
+  /**
+   * Add an attachment.
+   *
+   * @param PhabricatorMetaMTAAttachment Attachment.
+   * @return this
+   * @task compose
+   */
+  public function addAttachment(PhabricatorMetaMTAAttachment $attachment) {
+    $this->attachments[] = $attachment;
+    return $this;
+  }
+
+
 /* -(  Rendering  )---------------------------------------------------------- */
 
 
@@ -99,6 +112,17 @@ final class PhabricatorMetaMTAMailBody {
    */
   public function render() {
     return implode("\n\n", $this->sections)."\n";
+  }
+
+
+  /**
+   * Retrieve attachments.
+   *
+   * @return list<PhabricatorMetaMTAAttachment> Attachments.
+   * @task render
+   */
+  public function getAttachments() {
+    return $this->attachments;
   }
 
 

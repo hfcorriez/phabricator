@@ -19,7 +19,7 @@ final class DiffusionInlineCommentController
       'phid = %s',
       $commit_phid);
     if (!$commit) {
-      throw new Exception("Invalid commit ID!");
+      throw new Exception('Invalid commit ID!');
     }
 
     // TODO: Write a real PathQuery object?
@@ -31,7 +31,7 @@ final class DiffusionInlineCommentController
       $path_id);
 
     if (!$path) {
-      throw new Exception("Invalid path ID!");
+      throw new Exception('Invalid path ID!');
     }
 
     return id(new PhabricatorAuditInlineComment())
@@ -49,7 +49,7 @@ final class DiffusionInlineCommentController
 
     $inline = $this->loadComment($id);
     if (!$this->canEditInlineComment($user, $inline)) {
-      throw new Exception("That comment is not editable!");
+      throw new Exception('That comment is not editable!');
     }
     return $inline;
   }
@@ -74,6 +74,14 @@ final class DiffusionInlineCommentController
     }
 
     return true;
+  }
+
+  protected function deleteComment(PhabricatorInlineCommentInterface $inline) {
+    return $inline->delete();
+  }
+
+  protected function saveComment(PhabricatorInlineCommentInterface $inline) {
+    return $inline->save();
   }
 
 }

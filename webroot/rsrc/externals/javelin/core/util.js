@@ -22,8 +22,6 @@
  * Throw an exception and attach the caller data in the exception.
  *
  * @param  string  Exception message.
- *
- * @group util
  */
 JX.$E = function(message) {
   var e = new Error(message);
@@ -45,16 +43,13 @@ JX.$E = function(message) {
  *
  * @param  obj     Array, or array-like object.
  * @return Array   Actual array.
- *
- * @group util
  */
-JX.$A = function(mysterious_arraylike_object) {
-  // NOTE: This avoids the Array.slice() trick because some bizarre COM object
-  // I dug up somewhere was freaking out when I tried to do it and it made me
-  // very upset, so do not replace this with Array.slice() cleverness.
+JX.$A = function(object) {
+  // IE8 throws "JScript object expected" when trying to call
+  // Array.prototype.slice on a NodeList, so just copy items one by one here.
   var r = [];
-  for (var ii = 0; ii < mysterious_arraylike_object.length; ii++) {
-    r.push(mysterious_arraylike_object[ii]);
+  for (var ii = 0; ii < object.length; ii++) {
+    r.push(object[ii]);
   }
   return r;
 };
@@ -78,8 +73,6 @@ JX.$A = function(mysterious_arraylike_object) {
  * @param  wild    Scalar or Array.
  * @return Array   If the argument was a scalar, an Array with the argument as
  *                 its only element. Otherwise, the original Array.
- *
- * @group util
  */
 JX.$AX = function(maybe_scalar) {
   return JX.isArray(maybe_scalar) ? maybe_scalar : [maybe_scalar];
@@ -94,8 +87,6 @@ JX.$AX = function(maybe_scalar) {
  *
  * @param  wild     Any value.
  * @return bool     true if the argument is an array, false otherwise.
- *
- * @group util
  */
 JX.isArray = Array.isArray || function(maybe_array) {
   return Object.prototype.toString.call(maybe_array) == '[object Array]';
@@ -133,8 +124,6 @@ JX.isArray = Array.isArray || function(maybe_array) {
  * @param  obj Destination object, which properties should be copied to.
  * @param  obj Source object, which properties should be copied from.
  * @return obj Modified destination object.
- *
- * @group util
  */
 JX.copy = function(copy_dst, copy_src) {
   for (var k in copy_src) {
@@ -228,8 +217,6 @@ JX.copy = function(copy_dst, copy_src) {
  * @param  ...       Zero or more arguments to bind.
  * @return function  New function which invokes the original function with
  *                   bound context and arguments when called.
- *
- * @group util
  */
 JX.bind = function(context, func, more) {
   if (__DEV__) {
@@ -257,8 +244,6 @@ JX.bind = function(context, func, more) {
  * actually have an effect.
  *
  * @return void
- *
- * @group util
  */
 JX.bag = function() {
   // \o\ \o/ /o/ woo dance party
@@ -272,8 +257,6 @@ JX.bag = function() {
  *
  * @param  obj    Object to retrieve keys from.
  * @return list   List of keys.
- *
- * @group util
  */
 JX.keys = Object.keys || function(obj) {
   var r = [];
@@ -290,8 +273,6 @@ JX.keys = Object.keys || function(obj) {
  *
  * @param   wild  Any value.
  * @return  wild  The passed argument.
- *
- * @group util
  */
 JX.id = function(any) {
   return any;
@@ -315,8 +296,6 @@ if (__DEV__) {
    *
    * @param  string Message to print to the browser debugging console.
    * @return void
-   *
-   * @group util
    */
   JX.log = function(message) {
     window.console.log(message);

@@ -13,8 +13,8 @@ final class LiskIsolationTestCase extends PhabricatorTestCase {
     $id = $dao->getID();
     $phid = $dao->getPHID();
 
-    $this->assertEqual(true, (bool)$id, 'Expect ID generated.');
-    $this->assertEqual(true, (bool)$phid, 'Expect PHID generated.');
+    $this->assertTrue((bool)$id, 'Expect ID generated.');
+    $this->assertTrue((bool)$phid, 'Expect PHID generated.');
 
     $dao->save(); // Effects update
 
@@ -48,12 +48,13 @@ final class LiskIsolationTestCase extends PhabricatorTestCase {
       $dao->establishLiveConnection('r');
 
       $this->assertFailure(
-        "LiskIsolationTestDAO did not throw an exception when instructed to ".
-        "explicitly connect to an external database.");
+        'LiskIsolationTestDAO did not throw an exception when instructed to '.
+        'explicitly connect to an external database.');
     } catch (LiskIsolationTestDAOException $ex) {
       // Expected, pass.
     }
 
+    $this->assertTrue(true);
   }
 
   public function testMagicMethods() {
@@ -81,8 +82,7 @@ final class LiskIsolationTestCase extends PhabricatorTestCase {
     } catch (Exception $thrown) {
       $ex = $thrown;
     }
-    $this->assertEqual(
-      true,
+    $this->assertTrue(
       (bool)$ex,
       'Typoing "get" should throw.');
 
@@ -92,8 +92,7 @@ final class LiskIsolationTestCase extends PhabricatorTestCase {
     } catch (Exception $thrown) {
       $ex = $thrown;
     }
-    $this->assertEqual(
-      true,
+    $this->assertTrue(
       (bool)$ex,
       'Typoing "set" should throw.');
 
@@ -103,8 +102,7 @@ final class LiskIsolationTestCase extends PhabricatorTestCase {
     } catch (Exception $thrown) {
       $ex = $thrown;
     }
-    $this->assertEqual(
-      true,
+    $this->assertTrue(
       (bool)$ex,
       'Made up method should throw.');
   }

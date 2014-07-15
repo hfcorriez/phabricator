@@ -35,11 +35,10 @@ final class ConpherenceActionMenuEventListener
     $href = '/conpherence/new/?participant='.$user->getPHID();
 
     return id(new PhabricatorActionView())
-      ->setIcon('message')
+      ->setIcon('fa-envelope')
       ->setName(pht('Send Message'))
       ->setWorkflow(true)
       ->setHref($href);
   }
 
 }
-

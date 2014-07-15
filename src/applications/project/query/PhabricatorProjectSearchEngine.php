@@ -3,6 +3,18 @@
 final class PhabricatorProjectSearchEngine
   extends PhabricatorApplicationSearchEngine {
 
+  public function getResultTypeDescription() {
+    return pht('Projects');
+  }
+
+  public function getApplicationClassName() {
+    return 'PhabricatorApplicationProject';
+  }
+
+  public function getCustomFieldObject() {
+    return new PhabricatorProject();
+  }
+
   public function buildSavedQueryFromRequest(AphrontRequest $request) {
     $saved = new PhabricatorSavedQuery();
 
@@ -11,11 +23,14 @@ final class PhabricatorProjectSearchEngine
       $this->readUsersFromRequest($request, 'members'));
     $saved->setParameter('status', $request->getStr('status'));
 
+    $this->readCustomFieldsFromRequest($request, $saved);
+
     return $saved;
   }
 
   public function buildQueryFromSavedQuery(PhabricatorSavedQuery $saved) {
-    $query = id(new PhabricatorProjectQuery());
+    $query = id(new PhabricatorProjectQuery())
+      ->needImages(true);
 
     $member_phids = $saved->getParameter('memberPHIDs', array());
     if ($member_phids && is_array($member_phids)) {
@@ -28,20 +43,22 @@ final class PhabricatorProjectSearchEngine
       $query->withStatus($status);
     }
 
+    $this->applyCustomFieldsToQuery($query, $saved);
+
     return $query;
   }
 
   public function buildSearchForm(
     AphrontFormView $form,
-    PhabricatorSavedQuery $saved_query) {
+    PhabricatorSavedQuery $saved) {
 
-    $phids = $saved_query->getParameter('memberPHIDs', array());
+    $phids = $saved->getParameter('memberPHIDs', array());
     $member_handles = id(new PhabricatorHandleQuery())
       ->setViewer($this->requireViewer())
       ->withPHIDs($phids)
       ->execute();
 
-    $status = $saved_query->getParameter('status');
+    $status = $saved->getParameter('status');
 
     $form
       ->appendChild(
@@ -56,6 +73,8 @@ final class PhabricatorProjectSearchEngine
           ->setName('status')
           ->setOptions($this->getStatusOptions())
           ->setValue($status));
+
+    $this->appendCustomFieldsToForm($form, $saved);
   }
 
   protected function getURI($path) {
@@ -109,6 +128,51 @@ final class PhabricatorProjectSearchEngine
       'active' => PhabricatorProjectQuery::STATUS_ACTIVE,
       'all' => PhabricatorProjectQuery::STATUS_ANY,
     );
+  }
+
+  protected function renderResultList(
+    array $projects,
+    PhabricatorSavedQuery $query,
+    array $handles) {
+    assert_instances_of($projects, 'PhabricatorProject');
+    $viewer = $this->requireViewer();
+
+    $list = new PHUIObjectItemListView();
+    $list->setUser($viewer);
+    foreach ($projects as $project) {
+      $id = $project->getID();
+      $workboards_uri = $this->getApplicationURI("board/{$id}/");
+      $members_uri = $this->getApplicationURI("members/{$id}/");
+      $workboards_url = phutil_tag(
+        'a',
+        array(
+          'href' => $workboards_uri
+        ),
+        pht('Workboards'));
+
+      $members_url = phutil_tag(
+        'a',
+        array(
+          'href' => $members_uri
+        ),
+        pht('Members'));
+
+      $item = id(new PHUIObjectItemView())
+        ->setHeader($project->getName())
+        ->setHref($this->getApplicationURI("view/{$id}/"))
+        ->setImageURI($project->getProfileImageURI())
+        ->addAttribute($workboards_url)
+        ->addAttribute($members_url);
+
+      if ($project->getStatus() == PhabricatorProjectStatus::STATUS_ARCHIVED) {
+        $item->addIcon('delete-grey', pht('Archived'));
+        $item->setDisabled(true);
+      }
+
+      $list->addItem($item);
+    }
+
+    return $list;
   }
 
 }

@@ -4,7 +4,7 @@ final class ConduitAPI_releeph_getbranches_Method
   extends ConduitAPI_releeph_Method {
 
   public function getMethodDescription() {
-    return "Return information about all active Releeph branches.";
+    return 'Return information about all active Releeph branches.';
   }
 
   public function defineParamTypes() {
@@ -24,7 +24,7 @@ final class ConduitAPI_releeph_getbranches_Method
   protected function execute(ConduitAPIRequest $request) {
     $results = array();
 
-    $projects = id(new ReleephProjectQuery())
+    $projects = id(new ReleephProductQuery())
       ->setViewer($request->getUser())
       ->withActive(1)
       ->execute();

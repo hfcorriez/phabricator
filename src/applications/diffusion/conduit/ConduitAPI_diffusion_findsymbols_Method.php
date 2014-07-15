@@ -1,13 +1,10 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_diffusion_findsymbols_Method
   extends ConduitAPI_diffusion_Method {
 
   public function getMethodDescription() {
-    return "Retrieve Diffusion symbol information.";
+    return 'Retrieve Diffusion symbol information.';
   }
 
   public function defineParamTypes() {

@@ -2,18 +2,22 @@
 
 /**
  * Select and lease tasks from the worker task queue.
- *
- * @group worker
  */
 final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
 
   const PHASE_UNLEASED = 'unleased';
   const PHASE_EXPIRED  = 'expired';
 
-  const DEFAULT_LEASE_DURATION = 60; // Seconds
-
   private $ids;
   private $limit;
+
+  public static function getDefaultWaitBeforeRetry() {
+    return phutil_units('5 minutes in seconds');
+  }
+
+  public static function getDefaultLeaseDuration() {
+    return phutil_units('2 hours in seconds');
+  }
 
   public function withIDs(array $ids) {
     $this->ids = $ids;
@@ -27,7 +31,7 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
 
   public function execute() {
     if (!$this->limit) {
-      throw new Exception("You must setLimit() when leasing tasks.");
+      throw new Exception('You must setLimit() when leasing tasks.');
     }
 
     $task_table = new PhabricatorWorkerActiveTask();
@@ -48,7 +52,6 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
 
     $leased = 0;
     foreach ($phases as $phase) {
-
       // NOTE: If we issue `UPDATE ... WHERE ... ORDER BY id ASC`, the query
       // goes very, very slowly. The `ORDER BY` triggers this, although we get
       // the same apparent results without it. Without the ORDER BY, binary
@@ -78,7 +81,7 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
             %Q',
           $task_table->getTableName(),
           $lease_ownership_name,
-          self::DEFAULT_LEASE_DURATION,
+          self::getDefaultLeaseDuration(),
           $this->buildUpdateWhereClause($conn_w, $phase, $rows));
 
         $leased += $conn_w->getAffectedRows();
@@ -122,7 +125,6 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
   }
 
   private function buildWhereClause(AphrontDatabaseConnection $conn_w, $phase) {
-
     $where = array();
 
     switch ($phase) {
@@ -137,10 +139,7 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
     }
 
     if ($this->ids) {
-      $where[] = qsprintf(
-        $conn_w,
-        'id IN (%Ld)',
-        $this->ids);
+      $where[] = qsprintf($conn_w, 'id IN (%Ld)', $this->ids);
     }
 
     return $this->formatWhereClause($where);
@@ -158,13 +157,8 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
 
     switch ($phase) {
       case self::PHASE_UNLEASED:
-        $where[] = qsprintf(
-          $conn_w,
-          'leaseOwner IS NULL');
-        $where[] = qsprintf(
-          $conn_w,
-          'id IN (%Ld)',
-          ipull($rows, 'id'));
+        $where[] = qsprintf($conn_w, 'leaseOwner IS NULL');
+        $where[] = qsprintf($conn_w, 'id IN (%Ld)', ipull($rows, 'id'));
         break;
       case self::PHASE_EXPIRED:
         $in = array();
@@ -175,24 +169,20 @@ final class PhabricatorWorkerLeaseQuery extends PhabricatorQuery {
             $row['id'],
             $row['leaseOwner']);
         }
-        $where[] = qsprintf(
-          $conn_w,
-          '(%Q)',
-          implode(' OR ', $in));
+        $where[] = qsprintf($conn_w, '(%Q)', implode(' OR ', $in));
         break;
       default:
         throw new Exception("Unknown phase '{$phase}'!");
     }
 
     return $this->formatWhereClause($where);
-
   }
 
   private function buildOrderClause(AphrontDatabaseConnection $conn_w, $phase) {
     switch ($phase) {
       case self::PHASE_UNLEASED:
-        // When selecting new tasks, we want to consume them in roughly
-        // FIFO order, so we order by the task ID.
+        // When selecting new tasks, we want to consume them in order of
+        // decreasing priority (and then FIFO).
         return qsprintf($conn_w, 'ORDER BY id ASC');
       case self::PHASE_EXPIRED:
         // When selecting failed tasks, we want to consume them in roughly

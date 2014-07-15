@@ -1,8 +1,6 @@
 <?php
 
-final class HarbormasterPlanListController
-  extends HarbormasterPlanController
-  implements PhabricatorApplicationSearchResultsControllerInterface {
+final class HarbormasterPlanListController extends HarbormasterPlanController {
 
   private $queryKey;
 
@@ -24,38 +22,15 @@ final class HarbormasterPlanListController
     return $this->delegateToController($controller);
   }
 
-  public function renderResultsList(
-    array $plans,
-    PhabricatorSavedQuery $query) {
-    assert_instances_of($plans, 'HarbormasterBuildPlan');
-
-    $viewer = $this->getRequest()->getUser();
-
-    $list = new PHUIObjectItemListView();
-    foreach ($plans as $plan) {
-      $id = $plan->getID();
-
-      $item = id(new PHUIObjectItemView())
-        ->setObjectName(pht('Plan %d', $plan->getID()))
-        ->setHeader($plan->getName());
-
-      if ($plan->isDisabled()) {
-        $item->setDisabled(true);
-      }
-
-      $item->setHref($this->getApplicationURI("plan/{$id}/"));
-
-      $list->addItem($item);
-    }
-
-    return $list;
-  }
-
   public function buildSideNavView($for_app = false) {
     $user = $this->getRequest()->getUser();
 
     $nav = new AphrontSideNavFilterView();
     $nav->setBaseURI(new PhutilURI($this->getApplicationURI()));
+
+    if ($for_app) {
+      $nav->addFilter('new/', pht('New Build Plan'));
+    }
 
     id(new HarbormasterBuildPlanSearchEngine())
       ->setViewer($user)

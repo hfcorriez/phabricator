@@ -7,7 +7,8 @@ final class PonderQuestion extends PonderDAO
     PhabricatorSubscribableInterface,
     PhabricatorFlaggableInterface,
     PhabricatorPolicyInterface,
-    PhabricatorTokenReceiverInterface {
+    PhabricatorTokenReceiverInterface,
+    PhabricatorProjectInterface {
 
   const MARKUP_FIELD_CONTENT = 'markup:content';
 
@@ -48,7 +49,7 @@ final class PonderQuestion extends PonderDAO
   }
 
   public function attachRelated() {
-    $this->answers = $this->loadRelatives(new PonderAnswer(), "questionID");
+    $this->answers = $this->loadRelatives(new PonderAnswer(), 'questionID');
     $qa_phids = mpull($this->answers, 'getPHID') + array($this->getPHID());
 
     if ($qa_phids) {
@@ -170,16 +171,26 @@ final class PonderQuestion extends PonderDAO
     return $this->getPHID();
   }
 
-  public function isAutomaticallySubscribed($phid) {
-    return ($phid == $this->getAuthorPHID());
-  }
-
   public function save() {
     if (!$this->getMailKey()) {
       $this->setMailKey(Filesystem::readRandomCharacters(20));
     }
     return parent::save();
   }
+
+  public function getOriginalTitle() {
+    // TODO: Make this actually save/return the original title.
+    return $this->getTitle();
+  }
+
+  public function getFullTitle() {
+    $id = $this->getID();
+    $title = $this->getTitle();
+    return "Q{$id}: {$title}";
+  }
+
+
+/* -(  PhabricatorPolicyInterface  )----------------------------------------- */
 
   public function getCapabilities() {
     return array(
@@ -210,15 +221,20 @@ final class PonderQuestion extends PonderDAO
       'The user who asked a question can always view and edit it.');
   }
 
-  public function getOriginalTitle() {
-    // TODO: Make this actually save/return the original title.
-    return $this->getTitle();
+
+/* -(  PhabricatorSubscribableInterface  )----------------------------------- */
+
+
+  public function isAutomaticallySubscribed($phid) {
+    return ($phid == $this->getAuthorPHID());
   }
 
-  public function getFullTitle() {
-    $id = $this->getID();
-    $title = $this->getTitle();
-    return "Q{$id}: {$title}";
+  public function shouldShowSubscribersProperty() {
+    return true;
+  }
+
+  public function shouldAllowSubscription($phid) {
+    return true;
   }
 
 

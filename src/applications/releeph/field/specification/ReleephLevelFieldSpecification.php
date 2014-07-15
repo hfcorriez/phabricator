@@ -23,11 +23,11 @@ abstract class ReleephLevelFieldSpecification
     throw new PhabricatorCustomFieldImplementationIncompleteException($this);
   }
 
-  public function renderValueForHeaderView() {
+  public function renderPropertyViewValue(array $handles) {
     return $this->getNameForLevel($this->getValue());
   }
 
-  public function renderEditControl() {
+  public function renderEditControl(array $handles) {
     $control_name = $this->getRequiredStorageKey();
     $all_levels = $this->getLevels();
 
@@ -43,7 +43,7 @@ abstract class ReleephLevelFieldSpecification
 
     if ($this->error) {
       $control->setError($this->error);
-    } elseif ($this->getDefaultLevel()) {
+    } else if ($this->getDefaultLevel()) {
       $control->setError(true);
     }
 

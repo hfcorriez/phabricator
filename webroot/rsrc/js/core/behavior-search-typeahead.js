@@ -26,6 +26,7 @@ JX.behavior('phabricator-search-typeahead', function(config) {
       'span',
       attr,
       [
+        JX.$N('span', {className: object[10]}),
         JX.$N('span', {className: 'result-name'}, object[4] || object[0]),
         JX.$N('span', {className: 'result-type'}, object[5])
       ]);
@@ -53,8 +54,9 @@ JX.behavior('phabricator-search-typeahead', function(config) {
     var type_priority = {
       'jump' : 1,
       'apps' : 2,
-      'user' : 3,
-      'symb' : 4
+      'proj' : 3,
+      'user' : 4,
+      'symb' : 5
     };
 
     var tokens = this.tokenize(value);
@@ -130,4 +132,9 @@ JX.behavior('phabricator-search-typeahead', function(config) {
   });
 
   typeahead.start();
+
+  JX.DOM.listen(JX.$(config.button), 'click', null, function () {
+    typeahead.setPlaceholder('');
+    typeahead.updatePlaceHolder();
+  });
 });

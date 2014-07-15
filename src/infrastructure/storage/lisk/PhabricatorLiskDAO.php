@@ -7,7 +7,7 @@ abstract class PhabricatorLiskDAO extends LiskDAO {
 
   private static $namespaceStack = array();
 
-  const ATTACHABLE = "<attachable>";
+  const ATTACHABLE = '<attachable>';
 
 /* -(  Configuring Storage  )------------------------------------------------ */
 
@@ -41,7 +41,7 @@ abstract class PhabricatorLiskDAO extends LiskDAO {
       $namespace = self::getDefaultStorageNamespace();
     }
     if (!strlen($namespace)) {
-      throw new Exception("No storage namespace configured!");
+      throw new Exception('No storage namespace configured!');
     }
     return $namespace;
   }
@@ -173,6 +173,50 @@ abstract class PhabricatorLiskDAO extends LiskDAO {
       throw new PhabricatorDataNotAttachedException($this);
     }
     return $value[$key];
+  }
+
+  protected function detectEncodingForStorage($string) {
+    return phutil_is_utf8($string) ? 'utf8' : null;
+  }
+
+  protected function getUTF8StringFromStorage($string, $encoding) {
+    if ($encoding == 'utf8') {
+      return $string;
+    }
+
+    if (function_exists('mb_detect_encoding')) {
+      if (strlen($encoding)) {
+        $try_encodings = array(
+          $encoding,
+        );
+      } else {
+        // TODO: This is pretty much a guess, and probably needs to be
+        // configurable in the long run.
+        $try_encodings = array(
+          'JIS',
+          'EUC-JP',
+          'SJIS',
+          'ISO-8859-1',
+        );
+      }
+
+      $guess = mb_detect_encoding($string, $try_encodings);
+      if ($guess) {
+        return mb_convert_encoding($string, 'UTF-8', $guess);
+      }
+    }
+
+    return phutil_utf8ize($string);
+  }
+
+  public function delete() {
+
+    // TODO: We should make some reasonable effort to destroy related
+    // infrastructure objects here, like edges, transactions, custom field
+    // storage, flags, Phrequent tracking, tokens, etc. This doesn't need to
+    // be exhaustive, but we can get a lot of it pretty easily.
+
+    return parent::delete();
   }
 
 }

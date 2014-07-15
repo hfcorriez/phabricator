@@ -22,7 +22,7 @@ JX.behavior('line-chart', function(config) {
     config.y,
     {
       nostroke: false,
-      axis: "0 0 1 1",
+      axis: '0 0 1 1',
       shade: true,
       gutter: 1,
       colors: config.colors || ['#d06']
@@ -64,7 +64,7 @@ JX.behavior('line-chart', function(config) {
         if (config.x[0][ii] > this.axis) {
           break;
         }
-        yvalue = format(config.y[yy][ii], (config.yformat || [])[yy]);
+        yvalue = format(config.y[yy][ii], config.yformat);
       }
 
       var xvalue = format(this.axis, config.xformat);
@@ -72,7 +72,7 @@ JX.behavior('line-chart', function(config) {
       var tag = r.tag(
         this.x,
         this.y[yy],
-        [xvalue, yvalue].join("\n"),
+        [xvalue, yvalue].join('\n'),
         180,
         24);
       tag
@@ -86,4 +86,3 @@ JX.behavior('line-chart', function(config) {
   });
 
 });
-

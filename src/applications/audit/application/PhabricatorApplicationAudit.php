@@ -2,10 +2,6 @@
 
 final class PhabricatorApplicationAudit extends PhabricatorApplication {
 
-  public function getShortDescription() {
-    return pht('Audit Code');
-  }
-
   public function getBaseURI() {
     return '/audit/';
   }
@@ -14,8 +10,16 @@ final class PhabricatorApplicationAudit extends PhabricatorApplication {
     return 'audit';
   }
 
+  public function getShortDescription() {
+    return pht('Browse and Audit Commits');
+  }
+
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return true;
+  }
+
   public function getHelpURI() {
-    return PhabricatorEnv::getDoclink('article/Audit_User_Guide.html');
+    return PhabricatorEnv::getDoclink('Audit User Guide');
   }
 
   public function getEventListeners() {
@@ -27,17 +31,11 @@ final class PhabricatorApplicationAudit extends PhabricatorApplication {
   public function getRoutes() {
     return array(
       '/audit/' => array(
-        '' => 'PhabricatorAuditListController',
-        'view/(?P<filter>[^/]+)/(?:(?P<name>[^/]+)/)?'
-          => 'PhabricatorAuditListController',
+        '(?:query/(?P<queryKey>[^/]+)/)?' => 'PhabricatorAuditListController',
         'addcomment/' => 'PhabricatorAuditAddCommentController',
         'preview/(?P<id>[1-9]\d*)/' => 'PhabricatorAuditPreviewController',
       ),
     );
-  }
-
-  public function getApplicationGroup() {
-    return self::GROUP_CORE;
   }
 
   public function getApplicationOrder() {
@@ -49,10 +47,11 @@ final class PhabricatorApplicationAudit extends PhabricatorApplication {
 
     $phids = PhabricatorAuditCommentEditor::loadAuditPHIDsForUser($user);
 
-    $commits = id(new PhabricatorAuditCommitQuery())
-      ->withAuthorPHIDs($phids)
-      ->withStatus(PhabricatorAuditCommitQuery::STATUS_CONCERN)
-      ->execute();
+    $query = id(new DiffusionCommitQuery())
+      ->setViewer($user)
+      ->withAuthorPHIDs(array($user->getPHID()))
+      ->withAuditStatus(DiffusionCommitQuery::AUDIT_STATUS_CONCERN);
+    $commits = $query->execute();
 
     $count = count($commits);
     $type = PhabricatorApplicationStatusView::TYPE_NEEDS_ATTENTION;
@@ -61,13 +60,14 @@ final class PhabricatorApplicationAudit extends PhabricatorApplication {
       ->setText(pht('%d Problem Commit(s)', $count))
       ->setCount($count);
 
-    $audits = id(new PhabricatorAuditQuery())
+    $query = id(new DiffusionCommitQuery())
+      ->setViewer($user)
       ->withAuditorPHIDs($phids)
-      ->withStatus(PhabricatorAuditQuery::STATUS_OPEN)
-      ->withAwaitingUser($user)
-      ->execute();
+      ->withAuditStatus(DiffusionCommitQuery::AUDIT_STATUS_OPEN)
+      ->withAuditAwaitingUser($user);
+    $commits = $query->execute();
 
-    $count = count($audits);
+    $count = count($commits);
     $type = PhabricatorApplicationStatusView::TYPE_WARNING;
     $status[] = id(new PhabricatorApplicationStatusView())
       ->setType($type)
@@ -78,4 +78,3 @@ final class PhabricatorApplicationAudit extends PhabricatorApplication {
   }
 
 }
-

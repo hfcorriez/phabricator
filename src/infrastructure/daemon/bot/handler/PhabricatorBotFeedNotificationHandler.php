@@ -1,9 +1,7 @@
 <?php
 
 /**
- * Watches the feed and puts notifications into channel(s) of choice
- *
- * @group irc
+ * Watches the feed and puts notifications into channel(s) of choice.
  */
 final class PhabricatorBotFeedNotificationHandler
   extends PhabricatorBotHandler {
@@ -11,14 +9,16 @@ final class PhabricatorBotFeedNotificationHandler
   private $startupDelay = 30;
   private $lastSeenChronoKey = 0;
 
+  private $typesNeedURI = array('DREV', 'TASK');
+
   private function shouldShowStory($story) {
-    $story_class = $story['class'];
+    $story_objectphid = $story['objectPHID'];
     $story_text = $story['text'];
 
     $show = $this->getConfig('notification.types');
 
     if ($show) {
-      $obj_type = str_replace('PhabricatorFeedStory', '', $story_class);
+      $obj_type = phid_get_type($story_objectphid);
       if (!in_array(strtolower($obj_type), $show)) {
         return false;
       }
@@ -31,46 +31,47 @@ final class PhabricatorBotFeedNotificationHandler
     switch ($verbosity) {
       case 2:
         $verbs[] = array(
-                     'commented',
-                     'added',
-                     'changed',
-                     'resigned',
-                     'explained',
-                     'modified',
-                     'attached',
-                     'edited',
-                     'joined',
-                     'left',
-                     'removed'
-                   );
+          'commented',
+          'added',
+          'changed',
+          'resigned',
+          'explained',
+          'modified',
+          'attached',
+          'edited',
+          'joined',
+          'left',
+          'removed',
+        );
       // fallthrough
       case 1:
         $verbs[] = array(
-                     'updated',
-                     'accepted',
-                     'requested',
-                     'planned',
-                     'claimed',
-                     'summarized',
-                     'commandeered',
-                     'assigned'
-                   );
+          'updated',
+          'accepted',
+          'requested',
+          'planned',
+          'claimed',
+          'summarized',
+          'commandeered',
+          'assigned',
+        );
       // fallthrough
       case 0:
         $verbs[] = array(
-                     'created',
-                     'closed',
-                     'raised',
-                     'committed',
-                     'reopened',
-                     'deleted'
-                   );
-      break;
+          'created',
+          'closed',
+          'raised',
+          'committed',
+          'abandoned',
+          'reclaimed',
+          'reopened',
+          'deleted',
+        );
+        break;
 
       case 3:
       default:
         return true;
-      break;
     }
 
     $verbs = '/('.implode('|', array_mergev($verbs)).')/';
@@ -88,10 +89,10 @@ final class PhabricatorBotFeedNotificationHandler
 
   public function runBackgroundTasks() {
     if ($this->startupDelay > 0) {
-        // the event loop runs every 1s so delay enough to fully conenct
-        $this->startupDelay--;
+      // the event loop runs every 1s so delay enough to fully conenct
+      $this->startupDelay--;
 
-        return;
+      return;
     }
     if ($this->lastSeenChronoKey == 0) {
       // Since we only want to post notifications about new stories, skip
@@ -100,7 +101,7 @@ final class PhabricatorBotFeedNotificationHandler
       $latest = $this->getConduit()->callMethodSynchronous(
         'feed.query',
         array(
-          'limit'=>1
+          'limit' => 1,
         ));
 
       foreach ($latest as $story) {
@@ -123,9 +124,9 @@ final class PhabricatorBotFeedNotificationHandler
       $stories = $this->getConduit()->callMethodSynchronous(
         'feed.query',
         array(
-          'limit'=>$config_page_size,
-          'after'=>$chrono_key_cursor,
-          'view'=>'text'
+          'limit' => $config_page_size,
+          'after' => $chrono_key_cursor,
+          'view' => 'text',
         ));
 
       foreach ($stories as $story) {
@@ -148,6 +149,18 @@ final class PhabricatorBotFeedNotificationHandler
           continue;
         }
 
+        $message = $story['text'];
+
+        $story_object_type = phid_get_type($story['objectPHID']);
+        if (in_array($story_object_type, $this->typesNeedURI)) {
+          $objects = $this->getConduit()->callMethodSynchronous(
+            'phid.lookup',
+            array(
+              'names' => array($story['objectPHID']),
+            ));
+          $message .= ' '.$objects[$story['objectPHID']]['uri'];
+        }
+
         $channels = $this->getConfig('join');
         foreach ($channels as $channel_name) {
 
@@ -158,7 +171,7 @@ final class PhabricatorBotFeedNotificationHandler
             id(new PhabricatorBotMessage())
             ->setCommand('MESSAGE')
             ->setTarget($channel)
-            ->setBody($story['text']));
+            ->setBody($message));
         }
       }
     }

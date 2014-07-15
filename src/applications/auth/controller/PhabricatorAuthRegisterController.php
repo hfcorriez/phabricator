@@ -57,8 +57,13 @@ final class PhabricatorAuthRegisterController
 
     $default_username = $account->getUsername();
     $default_realname = $account->getRealName();
+
     $default_email = $account->getEmail();
-    if ($default_email) {
+    if (!PhabricatorUserEmail::isValidAddress($default_email)) {
+      $default_email = null;
+    }
+
+    if ($default_email !== null) {
       // If the account source provided an email, but it's not allowed by
       // the configuration, roadblock the user. Previously, we let the user
       // pick a valid email address instead, but this does not align well with
@@ -84,7 +89,7 @@ final class PhabricatorAuthRegisterController
       // TODO: See T3340.
       // TODO: See T3472.
 
-      if ($default_email) {
+      if ($default_email !== null) {
         $same_email = id(new PhabricatorUserEmail())->loadOneWhere(
           'address = %s',
           $default_email);
@@ -126,6 +131,12 @@ final class PhabricatorAuthRegisterController
     $can_edit_anything = $profile->getCanEditAnything() || $must_set_password;
     $force_verify = $profile->getShouldVerifyEmail();
 
+    // Automatically verify the administrator's email address during first-time
+    // setup.
+    if ($is_setup) {
+      $force_verify = true;
+    }
+
     $value_username = $default_username;
     $value_realname = $default_realname;
     $value_email = $default_email;
@@ -133,8 +144,10 @@ final class PhabricatorAuthRegisterController
 
     $errors = array();
 
+    $require_real_name = PhabricatorEnv::getEnvConfig('user.require-real-name');
+
     $e_username = strlen($value_username) ? null : true;
-    $e_realname = strlen($value_realname) ? null : true;
+    $e_realname = $require_real_name ? true : null;
     $e_email = strlen($value_email) ? null : true;
     $e_password = true;
     $e_captcha = true;
@@ -150,7 +163,7 @@ final class PhabricatorAuthRegisterController
 
         $captcha_ok = AphrontFormRecaptchaControl::processCaptcha($request);
         if (!$captcha_ok) {
-          $errors[] = pht("Captcha response is incorrect, try again.");
+          $errors[] = pht('Captcha response is incorrect, try again.');
           $e_captcha = pht('Invalid');
         }
       }
@@ -182,6 +195,14 @@ final class PhabricatorAuthRegisterController
           $errors[] = pht(
             'Password is too short (must be at least %d characters long).',
             $min_len);
+        } else if (
+          PhabricatorCommonPasswords::isCommonPassword($value_password)) {
+
+          $e_password = pht('Very Weak');
+          $errors[] = pht(
+            'Password is pathologically weak. This password is one of the '.
+            'most common passwords in use, and is extremely easy for '.
+            'attackers to guess. You must choose a stronger password.');
         } else {
           $e_password = null;
         }
@@ -192,8 +213,11 @@ final class PhabricatorAuthRegisterController
         if (!strlen($value_email)) {
           $e_email = pht('Required');
           $errors[] = pht('Email is required.');
-        } else if (!PhabricatorUserEmail::isAllowedAddress($value_email)) {
+        } else if (!PhabricatorUserEmail::isValidAddress($value_email)) {
           $e_email = pht('Invalid');
+          $errors[] = PhabricatorUserEmail::describeValidAddresses();
+        } else if (!PhabricatorUserEmail::isAllowedAddress($value_email)) {
+          $e_email = pht('Disallowed');
           $errors[] = PhabricatorUserEmail::describeAllowedAddresses();
         } else {
           $e_email = null;
@@ -202,7 +226,7 @@ final class PhabricatorAuthRegisterController
 
       if ($can_edit_realname) {
         $value_realname = $request->getStr('realName');
-        if (!strlen($value_realname)) {
+        if (!strlen($value_realname) && $require_real_name) {
           $e_realname = pht('Required');
           $errors[] = pht('Real name is required.');
         } else {
@@ -223,6 +247,11 @@ final class PhabricatorAuthRegisterController
             $verify_email =
               ($account->getEmailVerified()) &&
               ($value_email === $default_email);
+          }
+
+          if ($provider->shouldTrustEmails() &&
+              $value_email === $default_email) {
+            $verify_email = true;
           }
 
           $email_obj = id(new PhabricatorUserEmail())
@@ -302,13 +331,6 @@ final class PhabricatorAuthRegisterController
       }
 
       unset($unguarded);
-    }
-
-    $error_view = null;
-    if ($errors) {
-      $error_view = new AphrontErrorView();
-      $error_view->setTitle(pht('Registration Failed'));
-      $error_view->setErrors($errors);
     }
 
     $form = id(new AphrontFormView())
@@ -424,7 +446,7 @@ final class PhabricatorAuthRegisterController
     $object_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
       ->setForm($form)
-      ->setFormError($error_view);
+      ->setFormErrors($errors);
 
     return $this->buildApplicationPage(
       array(
@@ -434,7 +456,6 @@ final class PhabricatorAuthRegisterController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 
@@ -457,12 +478,12 @@ final class PhabricatorAuthRegisterController
     if (!$providers) {
       $response = $this->renderError(
         pht(
-          "There are no configured default registration providers."));
+          'There are no configured default registration providers.'));
       return array($account, $provider, $response);
     } else if (count($providers) > 1) {
       $response = $this->renderError(
         pht(
-          "There are too many configured default registration providers."));
+          'There are too many configured default registration providers.'));
       return array($account, $provider, $response);
     }
 

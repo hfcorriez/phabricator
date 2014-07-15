@@ -91,7 +91,7 @@ final class DiffusionRepositoryEditHostingController
         ->setValue($v_hosting);
 
     $doc_href = PhabricatorEnv::getDoclink(
-      'article/Diffusion_User_Guide_Repository_Hosting.html');
+      'Diffusion User Guide: Repository Hosting');
 
     $form = id(new AphrontFormView())
       ->setUser($user)
@@ -119,7 +119,6 @@ final class DiffusionRepositoryEditHostingController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 
@@ -284,7 +283,6 @@ final class DiffusionRepositoryEditHostingController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 

@@ -7,7 +7,6 @@ final class HarbormasterBuildable extends HarbormasterDAO
 
   protected $buildablePHID;
   protected $containerPHID;
-  protected $buildStatus;
   protected $buildableStatus;
   protected $isManualBuildable;
 
@@ -17,13 +16,57 @@ final class HarbormasterBuildable extends HarbormasterDAO
   private $containerHandle = self::ATTACHABLE;
   private $builds = self::ATTACHABLE;
 
-  const STATUS_WHATEVER = 'whatever';
+  const STATUS_BUILDING = 'building';
+  const STATUS_PASSED = 'passed';
+  const STATUS_FAILED = 'failed';
 
+  public static function getBuildableStatusName($status) {
+    switch ($status) {
+      case self::STATUS_BUILDING:
+        return pht('Building');
+      case self::STATUS_PASSED:
+        return pht('Passed');
+      case self::STATUS_FAILED:
+        return pht('Failed');
+      default:
+        return pht('Unknown');
+    }
+  }
+
+  public static function getBuildableStatusIcon($status) {
+    switch ($status) {
+      case self::STATUS_BUILDING:
+        return PHUIStatusItemView::ICON_RIGHT;
+      case self::STATUS_PASSED:
+        return PHUIStatusItemView::ICON_ACCEPT;
+      case self::STATUS_FAILED:
+        return PHUIStatusItemView::ICON_REJECT;
+      default:
+        return PHUIStatusItemView::ICON_QUESTION;
+    }
+  }
+
+  public static function getBuildableStatusColor($status) {
+    switch ($status) {
+      case self::STATUS_BUILDING:
+        return 'blue';
+      case self::STATUS_PASSED:
+        return 'green';
+      case self::STATUS_FAILED:
+        return 'red';
+      default:
+        return 'bluegrey';
+    }
+  }
+  
   public static function initializeNewBuildable(PhabricatorUser $actor) {
     return id(new HarbormasterBuildable())
       ->setIsManualBuildable(0)
-      ->setBuildStatus(self::STATUS_WHATEVER)
-      ->setBuildableStatus(self::STATUS_WHATEVER);
+      ->setBuildableStatus(self::STATUS_BUILDING);
+  }
+
+  public function getMonogram() {
+    return 'B'.$this->getID();
   }
 
   /**
@@ -106,7 +149,7 @@ final class HarbormasterBuildable extends HarbormasterDAO
         'buildID' => $build->getID()
       ));
 
-    return $this;
+    return $build;
   }
 
   public function getConfiguration() {
@@ -173,6 +216,7 @@ final class HarbormasterBuildable extends HarbormasterDAO
   public function getCapabilities() {
     return array(
       PhabricatorPolicyCapability::CAN_VIEW,
+      PhabricatorPolicyCapability::CAN_EDIT,
     );
   }
 
@@ -187,9 +231,7 @@ final class HarbormasterBuildable extends HarbormasterDAO
   }
 
   public function describeAutomaticCapability($capability) {
-    return pht(
-      'Users must be able to see the revision or repository to see a '.
-      'buildable.');
+    return pht('A buildable inherits policies from the underlying object.');
   }
 
 
@@ -206,6 +248,14 @@ final class HarbormasterBuildable extends HarbormasterDAO
 
   public function getHarbormasterContainerPHID() {
     return $this->getContainerPHID();
+  }
+
+  public function getBuildVariables() {
+    return array();
+  }
+
+  public function getAvailableBuildVariables() {
+    return array();
   }
 
 

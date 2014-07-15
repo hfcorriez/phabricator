@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group search
- */
 final class PhabricatorSearchManagementIndexWorkflow
   extends PhabricatorSearchManagementWorkflow {
 
@@ -28,13 +25,8 @@ final class PhabricatorSearchManagementIndexWorkflow
           array(
             'name' => 'background',
             'help' => 'Instead of indexing in this process, queue tasks for '.
-                      'the daemons. This is better if you are indexing a lot '.
-                      'of stuff, but less helpful for debugging.',
-          ),
-          array(
-            'name' => 'foreground',
-            'help' => 'Index in this process, even if there are many objects '.
-                      'to index. This is helpful for debugging.',
+                      'the daemons. This can improve performance, but makes '.
+                      'it more difficult to debug search indexing.',
           ),
           array(
             'name'      => 'objects',
@@ -50,7 +42,6 @@ final class PhabricatorSearchManagementIndexWorkflow
     $is_type = $args->getArg('type');
 
     $obj_names = $args->getArg('objects');
-
 
     if ($obj_names && ($is_all || $is_type)) {
       throw new PhutilArgumentUsageException(
@@ -68,26 +59,41 @@ final class PhabricatorSearchManagementIndexWorkflow
     }
 
     if (!$phids) {
-      throw new PhutilArgumentUsageException(
-        "Nothing to index!");
+      throw new PhutilArgumentUsageException('Nothing to index!');
+    }
+
+    if ($args->getArg('background')) {
+      $is_background = true;
+    } else {
+      PhabricatorWorker::setRunAllTasksInProcess(true);
+      $is_background = false;
+    }
+
+    if (!$is_background) {
+      $console->writeOut(
+        "%s\n",
+        pht(
+          'Run this workflow with "--background" to queue tasks for the '.
+          'daemon workers.'));
     }
 
     $groups = phid_group_by_type($phids);
     foreach ($groups as $group_type => $group) {
       $console->writeOut(
-        pht(
-          "Indexing %d object(s) of type %s.",
-          count($group),
-          $group_type)."\n");
+        "%s\n",
+        pht('Indexing %d object(s) of type %s.', count($group), $group_type));
     }
+
+    $bar = id(new PhutilConsoleProgressBar())
+      ->setTotal(count($phids));
 
     $indexer = new PhabricatorSearchIndexer();
     foreach ($phids as $phid) {
-      $indexer->indexDocumentByPHID($phid);
-      $console->writeOut(pht("Indexing '%s'...\n", $phid));
+      $indexer->queueDocumentForIndexing($phid);
+      $bar->update(1);
     }
 
-    $console->writeOut("Done.\n");
+    $bar->done();
   }
 
   private function loadPHIDsByNames(array $names) {

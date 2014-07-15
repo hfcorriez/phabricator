@@ -1,10 +1,6 @@
 <?php
 
-/**
- * @group maniphest
- */
-final class ManiphestSearchIndexer
-  extends PhabricatorSearchDocumentIndexer {
+final class ManiphestSearchIndexer extends PhabricatorSearchDocumentIndexer {
 
   public function getIndexableObject() {
     return new ManiphestTask();
@@ -30,13 +26,13 @@ final class ManiphestSearchIndexer
       PhabricatorPeoplePHIDTypeUser::TYPECONST,
       $task->getDateCreated());
 
-    if ($task->getStatus() == ManiphestTaskStatus::STATUS_OPEN) {
-      $doc->addRelationship(
-        PhabricatorSearchRelationship::RELATIONSHIP_OPEN,
-        $task->getPHID(),
-        ManiphestPHIDTypeTask::TYPECONST,
-        time());
-    }
+    $doc->addRelationship(
+      $task->isClosed()
+        ? PhabricatorSearchRelationship::RELATIONSHIP_CLOSED
+        : PhabricatorSearchRelationship::RELATIONSHIP_OPEN,
+      $task->getPHID(),
+      ManiphestPHIDTypeTask::TYPECONST,
+      time());
 
     $this->indexTransactions(
       $doc,
@@ -60,12 +56,10 @@ final class ManiphestSearchIndexer
         time());
     } else {
       $doc->addRelationship(
-        PhabricatorSearchRelationship::RELATIONSHIP_OWNER,
-        ManiphestTaskOwner::OWNER_UP_FOR_GRABS,
-        PhabricatorPHIDConstants::PHID_TYPE_MAGIC,
-        $owner
-          ? $owner->getDateCreated()
-          : $task->getDateCreated());
+        PhabricatorSearchRelationship::RELATIONSHIP_UNOWNED,
+        $task->getPHID(),
+        PhabricatorPHIDConstants::PHID_TYPE_VOID,
+        $task->getDateCreated());
     }
 
     // We need to load handles here since non-users may subscribe (mailing
@@ -85,4 +79,5 @@ final class ManiphestSearchIndexer
 
     return $doc;
   }
+
 }

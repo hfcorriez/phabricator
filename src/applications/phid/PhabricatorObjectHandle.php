@@ -10,12 +10,61 @@ final class PhabricatorObjectHandle
   private $fullName;
   private $title;
   private $imageURI;
+  private $icon;
+  private $tagColor;
   private $timestamp;
   private $status = PhabricatorObjectHandleStatus::STATUS_OPEN;
   private $complete;
   private $disabled;
   private $objectName;
   private $policyFiltered;
+
+  public function setIcon($icon) {
+    $this->icon = $icon;
+    return $this;
+  }
+
+  public function getIcon() {
+    if ($this->getPolicyFiltered()) {
+      return 'fa-lock';
+    }
+
+    if ($this->icon) {
+      return $this->icon;
+    }
+    return $this->getTypeIcon();
+  }
+
+  public function setTagColor($color) {
+    static $colors;
+    if (!$colors) {
+      $colors = array_fuse(array_keys(PHUITagView::getShadeMap()));
+    }
+
+    if (isset($colors[$color])) {
+      $this->tagColor = $color;
+    }
+
+    return $this;
+  }
+
+  public function getTagColor() {
+    if ($this->getPolicyFiltered()) {
+      return 'disabled';
+    }
+
+    if ($this->tagColor) {
+      return $this->tagColor;
+    }
+    return 'blue';
+  }
+
+  public function getTypeIcon() {
+    if ($this->getPHIDType()) {
+      return $this->getPHIDType()->getTypeIcon();
+    }
+    return null;
+  }
 
   public function setPolicyFiltered($policy_filered) {
     $this->policyFiltered = $policy_filered;
@@ -222,8 +271,7 @@ final class PhabricatorObjectHandle
     $icon = null;
     if ($this->getPolicyFiltered()) {
       $icon = id(new PHUIIconView())
-        ->setSpriteSheet(PHUIIconView::SPRITE_ICONS)
-        ->setSpriteIcon('lock-grey');
+        ->setIconFont('fa-lock lightgreytext');
     }
 
     return phutil_tag(
@@ -234,6 +282,15 @@ final class PhabricatorObjectHandle
         'title' => $title,
       ),
       array($icon, $name));
+  }
+
+  public function renderTag() {
+    return id(new PHUITagView())
+      ->setType(PHUITagView::TYPE_OBJECT)
+      ->setShade($this->getTagColor())
+      ->setIcon($this->getIcon())
+      ->setHref($this->getURI())
+      ->setName($this->getLinkName());
   }
 
   public function getLinkName() {

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conpherence
- */
 final class ConpherenceThread extends ConpherenceDAO
   implements PhabricatorPolicyInterface {
 
@@ -18,7 +15,7 @@ final class ConpherenceThread extends ConpherenceDAO
   private $widgetData = self::ATTACHABLE;
   private $images = array();
 
-  public function initializeNewThread(PhabricatorUser $sender) {
+  public static function initializeNewThread(PhabricatorUser $sender) {
     return id(new ConpherenceThread())
       ->setMessageCount(0)
       ->setTitle('');
@@ -194,7 +191,7 @@ final class ConpherenceThread extends ConpherenceDAO
   }
 
   public function describeAutomaticCapability($capability) {
-    return pht("Participants in a thread can always view and edit it.");
+    return pht('Participants in a thread can always view and edit it.');
   }
 
 }

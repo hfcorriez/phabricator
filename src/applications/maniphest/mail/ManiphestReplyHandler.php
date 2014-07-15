@@ -1,13 +1,10 @@
 <?php
 
-/**
- * @group maniphest
- */
 final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
 
   public function validateMailReceiver($mail_receiver) {
     if (!($mail_receiver instanceof ManiphestTask)) {
-      throw new Exception("Mail receiver is not a ManiphestTask!");
+      throw new Exception('Mail receiver is not a ManiphestTask!');
     }
   }
 
@@ -27,15 +24,15 @@ final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
 
   public function getReplyHandlerInstructions() {
     if ($this->supportsReplies()) {
-      return "Reply to comment or attach files, or !close, !claim, ".
-             "!unsubscribe or !assign <username>.";
+      return pht(
+        'Reply to comment or attach files, or !close, !claim, '.
+        '!unsubscribe or !assign <username>.');
     } else {
       return null;
     }
   }
 
   protected function receiveEmail(PhabricatorMetaMTAReceivedMail $mail) {
-
     // NOTE: We'll drop in here on both the "reply to a task" and "create a
     // new task" workflows! Make sure you test both if you make changes!
 
@@ -64,7 +61,7 @@ final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
       // and then set the title and description.
       $xaction = clone $template;
       $xaction->setTransactionType(ManiphestTransaction::TYPE_STATUS);
-      $xaction->setNewValue(ManiphestTaskStatus::STATUS_OPEN);
+      $xaction->setNewValue(ManiphestTaskStatus::getDefaultStatus());
       $xactions[] = $xaction;
 
       $task->setAuthorPHID($user->getPHID());
@@ -82,7 +79,7 @@ final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
       switch ($command) {
         case 'close':
           $ttype = ManiphestTransaction::TYPE_STATUS;
-          $new_value = ManiphestTaskStatus::STATUS_CLOSED_RESOLVED;
+          $new_value = ManiphestTaskStatus::getDefaultClosedStatus();
           break;
         case 'claim':
           $ttype = ManiphestTransaction::TYPE_OWNER;
@@ -133,7 +130,6 @@ final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
             ->setContent($body));
         $xactions[] = $xaction;
       }
-
     }
 
     $ccs = $mail->loadCCPHIDs();
@@ -183,7 +179,6 @@ final class ManiphestReplyHandler extends PhabricatorMailReplyHandler {
       ));
     $event->setUser($user);
     PhutilEventEngine::dispatchEvent($event);
-
   }
 
 }

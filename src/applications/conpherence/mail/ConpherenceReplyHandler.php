@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conpherence
- */
 final class ConpherenceReplyHandler extends PhabricatorMailReplyHandler {
 
   private $mailAddedParticipantPHIDs;
@@ -17,7 +14,7 @@ final class ConpherenceReplyHandler extends PhabricatorMailReplyHandler {
 
   public function validateMailReceiver($mail_receiver) {
     if (!($mail_receiver instanceof ConpherenceThread)) {
-      throw new Exception("Mail receiver is not a ConpherenceThread!");
+      throw new Exception('Mail receiver is not a ConpherenceThread!');
     }
   }
 
@@ -85,6 +82,7 @@ final class ConpherenceReplyHandler extends PhabricatorMailReplyHandler {
     $xactions = array_merge(
       $xactions,
       $editor->generateTransactionsFromText(
+        $user,
         $conpherence,
         $body));
 

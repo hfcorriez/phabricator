@@ -12,6 +12,7 @@ final class PassphraseCredential extends PassphraseDAO
   protected $username;
   protected $secretID;
   protected $isDestroyed;
+  protected $isLocked = 0;
 
   private $secret = self::ATTACHABLE;
 
@@ -23,6 +24,10 @@ final class PassphraseCredential extends PassphraseDAO
       ->setIsDestroyed(0)
       ->setViewPolicy($actor->getPHID())
       ->setEditPolicy($actor->getPHID());
+  }
+
+  public function getMonogram() {
+    return 'K'.$this->getID();
   }
 
   public function getConfiguration() {

@@ -1,20 +1,13 @@
 <?php
 
-/**
- * @group conpherence
- */
 final class PhabricatorApplicationConpherence extends PhabricatorApplication {
 
   public function getBaseURI() {
     return '/conpherence/';
   }
 
-  public function getQuickCreateURI() {
-    return $this->getBaseURI().'new/';
-  }
-
   public function getShortDescription() {
-    return pht('Messaging');
+    return pht('Send Messages');
   }
 
   public function getIconName() {
@@ -23,10 +16,6 @@ final class PhabricatorApplicationConpherence extends PhabricatorApplication {
 
   public function getTitleGlyph() {
     return "\xE2\x9C\x86";
-  }
-
-  public function getApplicationGroup() {
-    return self::GROUP_COMMUNICATION;
   }
 
   public function getEventListeners() {
@@ -49,5 +38,19 @@ final class PhabricatorApplicationConpherence extends PhabricatorApplication {
       ),
     );
   }
+
+  public function getQuickCreateItems(PhabricatorUser $viewer) {
+    $items = array();
+
+    $item = id(new PHUIListItemView())
+      ->setName(pht('Conpherence Thread'))
+      ->setIcon('fa-comments')
+      ->setWorkflow(true)
+      ->setHref($this->getBaseURI().'new/');
+    $items[] = $item;
+
+    return $items;
+  }
+
 
 }

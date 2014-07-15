@@ -7,7 +7,7 @@ final class PhabricatorApplicationHarbormaster extends PhabricatorApplication {
   }
 
   public function getShortDescription() {
-    return pht('Continuous Build');
+    return pht('Build/CI');
   }
 
   public function getIconName() {
@@ -50,12 +50,19 @@ final class PhabricatorApplicationHarbormaster extends PhabricatorApplication {
           => 'HarbormasterBuildableListController',
         'step/' => array(
           'add/(?:(?P<id>\d+)/)?' => 'HarbormasterStepAddController',
+          'new/(?P<plan>\d+)/(?P<class>[^/]+)/'
+            => 'HarbormasterStepEditController',
           'edit/(?:(?P<id>\d+)/)?' => 'HarbormasterStepEditController',
           'delete/(?:(?P<id>\d+)/)?' => 'HarbormasterStepDeleteController',
         ),
+        'buildable/' => array(
+          '(?P<id>\d+)/(?P<action>stop|resume|restart)/'
+            => 'HarbormasterBuildableActionController',
+        ),
         'build/' => array(
-          '(?:(?P<id>\d+)/)?' => 'HarbormasterBuildViewController',
-          'cancel/(?:(?P<id>\d+)/)?' => 'HarbormasterBuildCancelController',
+          '(?P<id>\d+)/' => 'HarbormasterBuildViewController',
+          '(?P<action>stop|resume|restart)/(?P<id>\d+)/(?:(?P<via>[^/]+)/)?'
+            => 'HarbormasterBuildActionController',
         ),
         'plan/' => array(
           '(?:query/(?P<queryKey>[^/]+)/)?'

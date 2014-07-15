@@ -13,6 +13,17 @@ final class PhabricatorJavelinLinter extends ArcanistLinter {
   const LINT_UNKNOWN_DEPENDENCY = 4;
   const LINT_MISSING_BINARY = 5;
 
+  public function getInfoName() {
+    return 'Javelin Linter';
+  }
+
+  public function getInfoDescription() {
+    return pht(
+      'This linter is intended for use with the Javelin JS library and '.
+      'extensions. Use `javelinsymbols` to run Javelin rules on Javascript '.
+      'source files.');
+  }
+
   private function getBinaryPath() {
     if ($this->symbolsBinary === null) {
       list($err, $stdout) = exec_manual('which javelinsymbols');
@@ -46,6 +57,10 @@ final class PhabricatorJavelinLinter extends ArcanistLinter {
 
   public function getLinterName() {
     return 'JAVELIN';
+  }
+
+  public function getLinterConfigurationName() {
+    return 'javelin';
   }
 
   public function getLintSeverityMap() {
@@ -147,7 +162,7 @@ final class PhabricatorJavelinLinter extends ArcanistLinter {
       $path);
     $need = $external_classes;
 
-    $resource_name = substr($path, strlen('webroot'));
+    $resource_name = substr($path, strlen('webroot/'));
     $requires = $celerity->getRequiredSymbolsForName($resource_name);
     if (!$requires) {
       $requires = array();
@@ -170,7 +185,7 @@ final class PhabricatorJavelinLinter extends ArcanistLinter {
         // If JS requires CSS, just assume everything is fine.
         unset($requires[$key]);
       } else {
-        $symbol_path = 'webroot'.$requires_name;
+        $symbol_path = 'webroot/'.$requires_name;
         list($ignored, $req_install) = $this->getUsedAndInstalledSymbolsForPath(
           $symbol_path);
         if (array_intersect_key($req_install, $external_classes)) {
@@ -228,7 +243,7 @@ final class PhabricatorJavelinLinter extends ArcanistLinter {
       $matches = null;
       if (!preg_match('/^([?+\*])([^:]*):(\d+)$/', $line, $matches)) {
         throw new Exception(
-          "Received malformed output from `javelinsymbols`.");
+          'Received malformed output from `javelinsymbols`.');
       }
       $type = $matches[1];
       $symbol = $matches[2];

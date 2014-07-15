@@ -21,30 +21,38 @@ final class DifferentialRevisionStatus {
         self::COLOR_STATUS_DEFAULT,
       ArcanistDifferentialRevisionStatus::NEEDS_REVISION =>
         self::COLOR_STATUS_RED,
+      ArcanistDifferentialRevisionStatus::CHANGES_PLANNED =>
+        self::COLOR_STATUS_RED,
       ArcanistDifferentialRevisionStatus::ACCEPTED       =>
         self::COLOR_STATUS_GREEN,
       ArcanistDifferentialRevisionStatus::CLOSED         =>
         self::COLOR_STATUS_DARK,
       ArcanistDifferentialRevisionStatus::ABANDONED      =>
         self::COLOR_STATUS_DARK,
+      ArcanistDifferentialRevisionStatus::IN_PREPARATION =>
+        self::COLOR_STATUS_DARK,
     );
     return idx($map, $status, $default);
   }
 
   public static function getRevisionStatusIcon($status) {
-    $default = 'oh-open';
+    $default = 'fa-square-o bluegrey';
 
     $map = array(
       ArcanistDifferentialRevisionStatus::NEEDS_REVIEW   =>
-        'oh-open',
+        'fa-square-o bluegrey',
       ArcanistDifferentialRevisionStatus::NEEDS_REVISION =>
-        'oh-open-red',
+        'fa-square-o red',
+      ArcanistDifferentialRevisionStatus::CHANGES_PLANNED =>
+        'fa-square-o red',
       ArcanistDifferentialRevisionStatus::ACCEPTED       =>
-        'oh-open-green',
+        'fa-square-o green',
       ArcanistDifferentialRevisionStatus::CLOSED         =>
-        'oh-closed-dark',
+        'fa-check-square-o',
       ArcanistDifferentialRevisionStatus::ABANDONED      =>
-        'oh-closed-dark',
+        'fa-check-square-o',
+      ArcanistDifferentialRevisionStatus::IN_PREPARATION =>
+        'fa-question-circle blue',
     );
     return idx($map, $status, $default);
   }
@@ -55,8 +63,7 @@ final class DifferentialRevisionStatus {
       ArcanistDifferentialRevisionStatus::getNameForRevisionStatus($status);
 
     $img = id(new PHUIIconView())
-      ->setSpriteSheet(PHUIIconView::SPRITE_STATUS)
-      ->setSpriteIcon(self::getRevisionStatusIcon($status));
+      ->setIconFont(self::getRevisionStatusIcon($status));
 
     $tag = phutil_tag(
       'span',
@@ -92,9 +99,11 @@ final class DifferentialRevisionStatus {
     return array(
       ArcanistDifferentialRevisionStatus::NEEDS_REVIEW,
       ArcanistDifferentialRevisionStatus::NEEDS_REVISION,
+      ArcanistDifferentialRevisionStatus::CHANGES_PLANNED,
       ArcanistDifferentialRevisionStatus::ACCEPTED,
       ArcanistDifferentialRevisionStatus::CLOSED,
       ArcanistDifferentialRevisionStatus::ABANDONED,
+      ArcanistDifferentialRevisionStatus::IN_PREPARATION,
     );
   }
 

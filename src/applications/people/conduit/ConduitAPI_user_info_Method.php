@@ -1,10 +1,6 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_user_info_Method
-  extends ConduitAPI_user_Method {
+final class ConduitAPI_user_info_Method extends ConduitAPI_user_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_DEPRECATED;
@@ -15,7 +11,7 @@ final class ConduitAPI_user_info_Method
   }
 
   public function getMethodDescription() {
-    return "Retrieve information about a user by PHID.";
+    return 'Retrieve information about a user by PHID.';
   }
 
   public function defineParamTypes() {
@@ -35,7 +31,6 @@ final class ConduitAPI_user_info_Method
   }
 
   protected function execute(ConduitAPIRequest $request) {
-
     $user = id(new PhabricatorUser())->loadOneWhere(
       'phid = %s',
       $request->getValue('phid'));

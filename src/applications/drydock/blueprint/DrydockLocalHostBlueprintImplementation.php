@@ -7,8 +7,13 @@ final class DrydockLocalHostBlueprintImplementation
     return false;
   }
 
+  public function getBlueprintName() {
+    return pht('Local Host');
+  }
+
   public function getDescription() {
-    return pht('Allocates storage on the local host.');
+    return pht(
+      'Allows Drydock to run on the local host.');
   }
 
   public function canAllocateMoreResources(array $pool) {
@@ -38,8 +43,8 @@ final class DrydockLocalHostBlueprintImplementation
     $resource = $this->newResourceTemplate('Host (localhost)');
     $resource->setStatus(DrydockResourceStatus::STATUS_OPEN);
     $resource->setAttribute('path', $path);
-    $resource->setAttribute('remote', "false");
-    $resource->setAttribute('preallocated', "false");
+    $resource->setAttribute('remote', 'false');
+    $resource->setAttribute('preallocated', 'false');
     $resource->save();
 
     return $resource;

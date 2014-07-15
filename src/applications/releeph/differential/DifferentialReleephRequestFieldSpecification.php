@@ -16,8 +16,9 @@
  * button.)
  *
  */
-final class DifferentialReleephRequestFieldSpecification
-  extends DifferentialFieldSpecification {
+final class DifferentialReleephRequestFieldSpecification {
+
+  // TODO: This class is essentially dead right now, see T2222.
 
   const ACTION_PICKS    = 'picks';
   const ACTION_REVERTS  = 'reverts';
@@ -140,8 +141,8 @@ final class DifferentialReleephRequestFieldSpecification
      *   Reviewers: user1
      *
      * Some of these fields are recognized by Differential (e.g. "Requested
-     * By").  They are folded up into the "Releeph" field, parsed by this
-     * class.  As such $value includes more than just the first-line:
+     * By"). They are folded up into the "Releeph" field, parsed by this
+     * class. As such $value includes more than just the first-line:
      *
      *   "picks RQ1\n\nRequested By: edward\n\nApproved By: edward (requestor)"
      *
@@ -194,7 +195,7 @@ final class DifferentialReleephRequestFieldSpecification
       $rqs_seen = array();
       $groups = array();
       foreach ($releeph_requests as $releeph_request) {
-        $releeph_branch = $releeph_request->loadReleephBranch();
+        $releeph_branch = $releeph_request->getBranch();
         $branch_name = $releeph_branch->getName();
         $rq_id = 'RQ'.$releeph_request->getID();
 
@@ -216,8 +217,8 @@ final class DifferentialReleephRequestFieldSpecification
           $lists[] = implode(', ', $rq_ids).' in '.$branch_name;
         }
         throw new DifferentialFieldParseException(
-          "Commit message references multiple Releeph requests, ".
-          "but the requests are in different branches: ".
+          'Commit message references multiple Releeph requests, '.
+          'but the requests are in different branches: '.
           implode('; ', $lists));
       }
     }
@@ -243,13 +244,15 @@ final class DifferentialReleephRequestFieldSpecification
                                  PhabricatorRepositoryCommit $commit,
                                  PhabricatorRepositoryCommitData $data) {
 
+    // NOTE: This is currently dead code. See T2222.
+
     $releeph_requests = $this->loadReleephRequests();
 
     if (!$releeph_requests) {
       return;
     }
 
-    $releeph_branch = head($releeph_requests)->loadReleephBranch();
+    $releeph_branch = head($releeph_requests)->getBranch();
     if (!$this->isCommitOnBranch($repo, $commit, $releeph_branch)) {
       return;
     }
@@ -294,10 +297,12 @@ final class DifferentialReleephRequestFieldSpecification
   private function loadReleephRequests() {
     if (!$this->releephPHIDs) {
       return array();
-    } else {
-      return id(new ReleephRequest())
-        ->loadAllWhere('phid IN (%Ls)', $this->releephPHIDs);
     }
+
+    return id(new ReleephRequestQuery())
+      ->setViewer($this->getViewer())
+      ->withPHIDs($this->releephPHIDs)
+      ->execute();
   }
 
   private function isCommitOnBranch(PhabricatorRepository $repo,
@@ -348,9 +353,9 @@ final class DifferentialReleephRequestFieldSpecification
 
         if ($in_branch && $ex_branch) {
           $error = sprintf(
-            "CONFUSION: commit %s in %s contains %d path change(s) that were ".
-            "part of a Releeph branch, but also has %d path change(s) not ".
-            "part of a Releeph branch!",
+            'CONFUSION: commit %s in %s contains %d path change(s) that were '.
+            'part of a Releeph branch, but also has %d path change(s) not '.
+            'part of a Releeph branch!',
             $commit->getCommitIdentifier(),
             $repo->getCallsign(),
             count($in_branch),

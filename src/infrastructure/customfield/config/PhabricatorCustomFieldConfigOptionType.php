@@ -43,9 +43,14 @@ final class PhabricatorCustomFieldConfigOptionType
     foreach ($faux_spec as $key => $spec) {
       unset($faux_spec[$key]['disabled']);
     }
+
+    // TODO: We might need to build a real object here eventually.
+    $faux_object = null;
+
     $fields = PhabricatorCustomField::buildFieldList(
       $field_base_class,
-      $faux_spec);
+      $faux_spec,
+      $faux_object);
 
     $list_id = celerity_generate_unique_node_id();
     $input_id = celerity_generate_unique_node_id();
@@ -78,21 +83,21 @@ final class PhabricatorCustomFieldConfigOptionType
         id(new PHUIListItemView())
           ->setHref('#')
           ->addSigil('field-spec-toggle')
-          ->setIcon('new'));
+          ->setIcon('fa-plus'));
 
       $enabled_item->setBarColor('green');
 
       if (!$field->canDisableField()) {
         $enabled_item->addAction(
           id(new PHUIListItemView())
-            ->setIcon('lock-grey'));
+            ->setIcon('fa-lock grey'));
         $enabled_item->addIcon('none', pht('Permanent Field'));
       } else {
         $enabled_item->addAction(
           id(new PHUIListItemView())
             ->setHref('#')
             ->addSigil('field-spec-toggle')
-            ->setIcon('delete'));
+            ->setIcon('fa-times'));
       }
 
       $fields[$key] = array(

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conpherence
- */
 final class ConpherenceUpdateController
   extends ConpherenceController {
 
@@ -34,26 +31,37 @@ final class ConpherenceUpdateController
       ->executeOne();
 
     $action = $request->getStr('action', ConpherenceUpdateActions::METADATA);
+
     $latest_transaction_id = null;
-    $response_mode = 'ajax';
+    $response_mode = $request->isAjax() ? 'ajax' : 'redirect';
     $error_view = null;
     $e_file = array();
     $errors = array();
-    if ($request->isFormPost()) {
+    $delete_draft = false;
+    $xactions = array();
+    if ($request->isFormPost() || ($action == ConpherenceUpdateActions::LOAD)) {
       $editor = id(new ConpherenceEditor())
         ->setContinueOnNoEffect($request->isContinueRequest())
         ->setContentSourceFromRequest($request)
         ->setActor($user);
 
       switch ($action) {
+        case ConpherenceUpdateActions::DRAFT:
+          $draft = PhabricatorDraft::newFromUserAndKey(
+            $user,
+            $conpherence->getPHID());
+          $draft->setDraft($request->getStr('text'));
+          $draft->replaceOrDelete();
+          return new AphrontAjaxResponse();
         case ConpherenceUpdateActions::MESSAGE:
           $message = $request->getStr('text');
           $xactions = $editor->generateTransactionsFromText(
+            $user,
             $conpherence,
             $message);
+          $delete_draft = true;
           break;
         case ConpherenceUpdateActions::ADD_PERSON:
-          $xactions = array();
           $person_phids = $request->getArr('add_person');
           if (!empty($person_phids)) {
             $xactions[] = id(new ConpherenceTransaction())
@@ -63,7 +71,6 @@ final class ConpherenceUpdateController
           }
           break;
         case ConpherenceUpdateActions::REMOVE_PERSON:
-          $xactions = array();
           if (!$request->isContinueRequest()) {
             // do nothing; we'll display a confirmation dialogue instead
             break;
@@ -89,7 +96,6 @@ final class ConpherenceUpdateController
             ->setContent($result);
           break;
         case ConpherenceUpdateActions::METADATA:
-          $xactions = array();
           $updated = false;
           // all metadata updates are continue requests
           if (!$request->isContinueRequest()) {
@@ -109,18 +115,32 @@ final class ConpherenceUpdateController
               'That was a non-update. Try cancel.');
           }
           break;
+        case ConpherenceUpdateActions::LOAD:
+          $updated = false;
+          $response_mode = 'ajax';
+          break;
         default:
           throw new Exception('Unknown action: '.$action);
           break;
       }
-      if ($xactions) {
-        try {
-          $xactions = $editor->applyTransactions($conpherence, $xactions);
-        } catch (PhabricatorApplicationTransactionNoEffectException $ex) {
-          return id(new PhabricatorApplicationTransactionNoEffectResponse())
-            ->setCancelURI($this->getApplicationURI($conpherence_id.'/'))
-            ->setException($ex);
+
+      if ($xactions || ($action == ConpherenceUpdateActions::LOAD)) {
+        if ($xactions) {
+          try {
+            $xactions = $editor->applyTransactions($conpherence, $xactions);
+            if ($delete_draft) {
+              $draft = PhabricatorDraft::newFromUserAndKey(
+                $user,
+                $conpherence->getPHID());
+              $draft->delete();
+            }
+          } catch (PhabricatorApplicationTransactionNoEffectException $ex) {
+            return id(new PhabricatorApplicationTransactionNoEffectResponse())
+              ->setCancelURI($this->getApplicationURI($conpherence_id.'/'))
+              ->setException($ex);
+          }
         }
+
         switch ($response_mode) {
           case 'ajax':
             $latest_transaction_id = $request->getInt('latest_transaction_id');
@@ -146,8 +166,6 @@ final class ConpherenceUpdateController
 
     if ($errors) {
       $error_view = id(new AphrontErrorView())
-        ->setTitle(pht('Errors editing conpherence.'))
-        ->setInsideDialogue(true)
         ->setErrors($errors);
     }
 
@@ -257,6 +275,7 @@ final class ConpherenceUpdateController
     $need_transactions = false;
     switch ($action) {
       case ConpherenceUpdateActions::METADATA:
+      case ConpherenceUpdateActions::LOAD:
         $need_transactions = true;
         break;
       case ConpherenceUpdateActions::MESSAGE:

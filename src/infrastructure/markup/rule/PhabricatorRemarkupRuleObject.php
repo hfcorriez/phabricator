@@ -1,15 +1,17 @@
 <?php
 
-/**
- * @group markup
- */
 abstract class PhabricatorRemarkupRuleObject
   extends PhutilRemarkupRule {
 
   const KEY_RULE_OBJECT = 'rule.object';
+  const KEY_MENTIONED_OBJECTS = 'rule.object.mentioned';
 
   abstract protected function getObjectNamePrefix();
   abstract protected function loadObjects(array $ids);
+
+  public function getPriority() {
+    return 200.0;
+  }
 
   protected function getObjectNamePrefixBeginsWithWordCharacter() {
     $prefix = $this->getObjectNamePrefix();
@@ -39,20 +41,17 @@ abstract class PhabricatorRemarkupRuleObject
     return $result;
   }
 
+  protected function getObjectHref($object, $handle, $id) {
+    return $handle->getURI();
+  }
+
   protected function renderObjectRef($object, $handle, $anchor, $id) {
-    $href = $handle->getURI();
+    $href = $this->getObjectHref($object, $handle, $id);
     $text = $this->getObjectNamePrefix().$id;
+
     if ($anchor) {
-      $matches = null;
-      if (preg_match('@^(?:comment-)?(\d{1,7})$@', $anchor, $matches)) {
-        // Maximum length is 7 because 12345678 could be a file hash in
-        // Differential.
-        $href = $href.'#comment-'.$matches[1];
-        $text = $text.'#'.$matches[1];
-      } else {
-        $href = $href.'#'.$anchor;
-        $text = $text.'#'.$anchor;
-      }
+      $href = $href.'#'.$anchor;
+      $text = $text.'#'.$anchor;
     }
 
     if ($this->getEngine()->isTextMode()) {
@@ -72,6 +71,7 @@ abstract class PhabricatorRemarkupRuleObject
   protected function renderObjectEmbed($object, $handle, $options) {
     $name = $handle->getFullName();
     $href = $handle->getURI();
+    $status_closed = PhabricatorObjectHandleStatus::STATUS_CLOSED;
 
     if ($this->getEngine()->isTextMode()) {
       return $name.' <'.PhabricatorEnv::getProductionURI($href).'>';
@@ -79,16 +79,17 @@ abstract class PhabricatorRemarkupRuleObject
 
     $attr = array(
       'phid' => $handle->getPHID(),
+      'closed'  => ($handle->getStatus() == $status_closed),
     );
 
     return $this->renderHovertag($name, $href, $attr);
   }
 
   protected function renderHovertag($name, $href, array $attr = array()) {
-    return id(new PhabricatorTagView())
+    return id(new PHUITagView())
       ->setName($name)
       ->setHref($href)
-      ->setType(PhabricatorTagView::TYPE_OBJECT)
+      ->setType(PHUITagView::TYPE_OBJECT)
       ->setPHID(idx($attr, 'phid'))
       ->setClosed(idx($attr, 'closed'))
       ->render();
@@ -115,12 +116,14 @@ abstract class PhabricatorRemarkupRuleObject
       $boundary = '\\B';
     }
 
-    // NOTE: The "(?<!#)" prevents us from linking "#abcdef" or similar. The
-    // "\b" allows us to link "(abcdef)" or similar without linking things
+    // NOTE: The "(?<!#)" prevents us from linking "#abcdef" or similar.
+    // The "(?<!/)" prevents us from linking things in URIs.
+    // The "(?<!;)" prevents linking Diffusion URIs to commits.
+    // The "\b" allows us to link "(abcdef)" or similar without linking things
     // in the middle of words.
 
     $text = preg_replace_callback(
-      '((?<!#)'.$boundary.$prefix.'('.$id.')(?:#([-\w\d]+))?\b)',
+      '((?<!#)(?<!/)(?<!;)'.$boundary.$prefix.'('.$id.')(?:#([-\w\d]+))?\b)',
       array($this, 'markupObjectReference'),
       $text);
 
@@ -128,6 +131,10 @@ abstract class PhabricatorRemarkupRuleObject
   }
 
   public function markupObjectEmbed($matches) {
+    if (!$this->isFlatText($matches[0])) {
+      return $matches[0];
+    }
+
     return $this->markupObject(array(
       'type' => 'embed',
       'id' => $matches[1],
@@ -137,6 +144,10 @@ abstract class PhabricatorRemarkupRuleObject
   }
 
   public function markupObjectReference($matches) {
+    if (!$this->isFlatText($matches[0])) {
+      return $matches[0];
+    }
+
     return $this->markupObject(array(
       'type' => 'ref',
       'id' => $matches[1],
@@ -193,6 +204,12 @@ abstract class PhabricatorRemarkupRuleObject
       }
     }
 
+    $phids = $engine->getTextMetadata(self::KEY_MENTIONED_OBJECTS, array());
+    foreach ($objects as $object) {
+      $phids[$object->getPHID()] = $object->getPHID();
+    }
+    $engine->setTextMetadata(self::KEY_MENTIONED_OBJECTS, $phids);
+
     $handles = $this->loadHandles($objects);
     foreach ($metadata as $key => $spec) {
       $handle = $handles[$spec['id']];
@@ -206,6 +223,7 @@ abstract class PhabricatorRemarkupRuleObject
             $spec['id']);
           break;
         case 'embed':
+          $spec['options'] = $this->assertFlatText($spec['options']);
           $view = $this->renderObjectEmbed($object, $handle, $spec['options']);
           break;
       }

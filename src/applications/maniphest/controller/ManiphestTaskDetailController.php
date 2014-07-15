@@ -47,15 +47,9 @@ final class ManiphestTaskDetailController extends ManiphestController {
     $field_list = PhabricatorCustomField::getObjectFields(
       $task,
       PhabricatorCustomField::ROLE_VIEW);
-
-    foreach ($field_list->getFields() as $field) {
-      $field->setObject($task);
-      $field->setViewer($user);
-    }
-
-    $field_list->readFieldsFromStorage($task);
-
-    $aux_fields = $field_list->getFields();
+    $field_list
+      ->setViewer($user)
+      ->readFieldsFromStorage($task);
 
     $e_commit = PhabricatorEdgeConfig::TYPE_TASK_HAS_COMMIT;
     $e_dep_on = PhabricatorEdgeConfig::TYPE_TASK_DEPENDS_ON_TASK;
@@ -157,11 +151,10 @@ final class ManiphestTaskDetailController extends ManiphestController {
 
     $transaction_types = array(
       PhabricatorTransactions::TYPE_COMMENT => pht('Comment'),
-      ManiphestTransaction::TYPE_STATUS     => pht('Close Task'),
+      ManiphestTransaction::TYPE_STATUS     => pht('Change Status'),
       ManiphestTransaction::TYPE_OWNER      => pht('Reassign / Claim'),
       ManiphestTransaction::TYPE_CCS        => pht('Add CCs'),
       ManiphestTransaction::TYPE_PRIORITY   => pht('Change Priority'),
-      ManiphestTransaction::TYPE_ATTACH     => pht('Upload File'),
       ManiphestTransaction::TYPE_PROJECTS   => pht('Associate Projects'),
     );
 
@@ -186,21 +179,14 @@ final class ManiphestTaskDetailController extends ManiphestController {
       }
     }
 
-    if ($task->getStatus() == ManiphestTaskStatus::STATUS_OPEN) {
-      $resolution_types = array_select_keys(
-        $resolution_types,
-        array(
-          ManiphestTaskStatus::STATUS_CLOSED_RESOLVED,
-          ManiphestTaskStatus::STATUS_CLOSED_WONTFIX,
-          ManiphestTaskStatus::STATUS_CLOSED_INVALID,
-          ManiphestTaskStatus::STATUS_CLOSED_SPITE,
-        ));
-    } else {
-      $resolution_types = array(
-        ManiphestTaskStatus::STATUS_OPEN => 'Reopened',
-      );
-      $transaction_types[ManiphestTransaction::TYPE_STATUS] =
-        'Reopen Task';
+    // Don't show an option to change to the current status, or to change to
+    // the duplicate status explicitly.
+    unset($resolution_types[$task->getStatus()]);
+    unset($resolution_types[ManiphestTaskStatus::getDuplicateStatus()]);
+
+    // Don't show owner/priority changes for closed tasks, as they don't make
+    // much sense.
+    if ($task->isClosed()) {
       unset($transaction_types[ManiphestTransaction::TYPE_PRIORITY]);
       unset($transaction_types[ManiphestTransaction::TYPE_OWNER]);
     }
@@ -219,17 +205,10 @@ final class ManiphestTaskDetailController extends ManiphestController {
       $draft_text = null;
     }
 
-    $is_serious = PhabricatorEnv::getEnvConfig('phabricator.serious-business');
-
-    if ($is_serious) {
-      // Prevent tasks from being closed "out of spite" in serious business
-      // installs.
-      unset($resolution_types[ManiphestTaskStatus::STATUS_CLOSED_SPITE]);
-    }
-
     $comment_form = new AphrontFormView();
     $comment_form
       ->setUser($user)
+      ->setWorkflow(true)
       ->setAction('/maniphest/transaction/save/')
       ->setEncType('multipart/form-data')
       ->addHiddenInput('taskID', $task->getID())
@@ -241,7 +220,7 @@ final class ManiphestTaskDetailController extends ManiphestController {
           ->setID('transaction-action'))
       ->appendChild(
         id(new AphrontFormSelectControl())
-          ->setLabel(pht('Resolution'))
+          ->setLabel(pht('Status'))
           ->setName('resolution')
           ->setControlID('resolution')
           ->setControlStyle('display: none')
@@ -293,7 +272,7 @@ final class ManiphestTaskDetailController extends ManiphestController {
           ->setUser($user))
       ->appendChild(
         id(new AphrontFormSubmitControl())
-          ->setValue($is_serious ? pht('Submit') : pht('Avast!')));
+          ->setValue(pht('Submit')));
 
     $control_map = array(
       ManiphestTransaction::TYPE_STATUS   => 'resolution',
@@ -301,28 +280,26 @@ final class ManiphestTaskDetailController extends ManiphestController {
       ManiphestTransaction::TYPE_CCS      => 'ccs',
       ManiphestTransaction::TYPE_PRIORITY => 'priority',
       ManiphestTransaction::TYPE_PROJECTS => 'projects',
-      ManiphestTransaction::TYPE_ATTACH   => 'file',
     );
+
+    $projects_source = new PhabricatorProjectDatasource();
 
     $tokenizer_map = array(
       ManiphestTransaction::TYPE_PROJECTS => array(
         'id'          => 'projects-tokenizer',
-        'src'         => '/typeahead/common/projects/',
-        'ondemand'    => PhabricatorEnv::getEnvConfig('tokenizer.ondemand'),
-        'placeholder' => pht('Type a project name...'),
+        'src'         => $projects_source->getDatasourceURI(),
+        'placeholder' => $projects_source->getPlaceholderText(),
       ),
       ManiphestTransaction::TYPE_OWNER => array(
         'id'          => 'assign-tokenizer',
         'src'         => '/typeahead/common/users/',
         'value'       => $default_claim,
         'limit'       => 1,
-        'ondemand'    => PhabricatorEnv::getEnvConfig('tokenizer.ondemand'),
         'placeholder' => pht('Type a user name...'),
       ),
       ManiphestTransaction::TYPE_CCS => array(
         'id'          => 'cc-tokenizer',
         'src'         => '/typeahead/common/mailable/',
-        'ondemand'    => PhabricatorEnv::getEnvConfig('tokenizer.ondemand'),
         'placeholder' => pht('Type a user or mailing list...'),
       ),
     );
@@ -345,6 +322,7 @@ final class ManiphestTaskDetailController extends ManiphestController {
       ));
     }
 
+    $is_serious = PhabricatorEnv::getEnvConfig('phabricator.serious-business');
     $comment_header = $is_serious
       ? pht('Add Comment')
       : pht('Weigh In');
@@ -388,6 +366,8 @@ final class ManiphestTaskDetailController extends ManiphestController {
         ->setFlush(true)
         ->setHeaderText($comment_header)
         ->appendChild($comment_form);
+      $timeline->setQuoteTargetID('transaction-comments');
+      $timeline->setQuoteRef($object_name);
     }
 
     $object_box = id(new PHUIObjectBoxView())
@@ -410,7 +390,6 @@ final class ManiphestTaskDetailController extends ManiphestController {
       array(
         'title' => 'T'.$task->getID().' '.$task->getTitle(),
         'pageObjects' => array($task->getPHID()),
-        'device' => true,
       ));
   }
 
@@ -450,7 +429,7 @@ final class ManiphestTaskDetailController extends ManiphestController {
     $view->addAction(
       id(new PhabricatorActionView())
         ->setName(pht('Edit Task'))
-        ->setIcon('edit')
+        ->setIcon('fa-pencil')
         ->setHref($this->getApplicationURI("/task/edit/{$id}/"))
         ->setDisabled(!$can_edit)
         ->setWorkflow(!$can_edit));
@@ -460,11 +439,11 @@ final class ManiphestTaskDetailController extends ManiphestController {
         id(new PhabricatorActionView())
           ->setName(pht('Automatically Subscribed'))
           ->setDisabled(true)
-          ->setIcon('enable'));
+          ->setIcon('fa-check-circle'));
     } else {
       $action = $viewer_is_cc ? 'rem' : 'add';
       $name   = $viewer_is_cc ? pht('Unsubscribe') : pht('Subscribe');
-      $icon   = $viewer_is_cc ? 'disable' : 'check';
+      $icon   = $viewer_is_cc ? 'fa-minus-circle' : 'fa-plus-circle';
 
       $view->addAction(
         id(new PhabricatorActionView())
@@ -480,7 +459,7 @@ final class ManiphestTaskDetailController extends ManiphestController {
         ->setName(pht('Merge Duplicates In'))
         ->setHref("/search/attach/{$phid}/TASK/merge/")
         ->setWorkflow(true)
-        ->setIcon('merge')
+        ->setIcon('fa-compress')
         ->setDisabled(!$can_edit)
         ->setWorkflow(true));
 
@@ -488,14 +467,14 @@ final class ManiphestTaskDetailController extends ManiphestController {
       id(new PhabricatorActionView())
         ->setName(pht('Create Subtask'))
         ->setHref($this->getApplicationURI("/task/create/?parent={$id}"))
-        ->setIcon('fork'));
+        ->setIcon('fa-level-down'));
 
     $view->addAction(
       id(new PhabricatorActionView())
-        ->setName(pht('Edit Dependencies'))
-        ->setHref("/search/attach/{$phid}/TASK/dependencies/")
+        ->setName(pht('Edit Blocking Tasks'))
+        ->setHref("/search/attach/{$phid}/TASK/blocks/")
         ->setWorkflow(true)
-        ->setIcon('link')
+        ->setIcon('fa-link')
         ->setDisabled(!$can_edit)
         ->setWorkflow(true));
 
@@ -525,11 +504,13 @@ final class ManiphestTaskDetailController extends ManiphestController {
       pht('Priority'),
       ManiphestTaskPriority::getTaskPriorityName($task->getPriority()));
 
-    $view->addProperty(
-      pht('Subscribers'),
-      $task->getCCPHIDs()
-      ? $this->renderHandlesForPHIDs($task->getCCPHIDs(), ',')
-      : phutil_tag('em', array(), pht('None')));
+    $handles = $this->getLoadedHandles();
+    $cc_handles = array_select_keys($handles, $task->getCCPHIDs());
+    $subscriber_html = id(new SubscriptionListStringBuilder())
+      ->setObjectPHID($task->getPHID())
+      ->setHandles($cc_handles)
+      ->buildPropertyString();
+    $view->addProperty(pht('Subscribers'), $subscriber_html);
 
     $view->addProperty(
       pht('Author'),
@@ -548,17 +529,70 @@ final class ManiphestTaskDetailController extends ManiphestController {
           $source));
     }
 
-    $view->addProperty(
-      pht('Projects'),
-      $task->getProjectPHIDs()
-      ? $this->renderHandlesForPHIDs($task->getProjectPHIDs(), ',')
-      : phutil_tag('em', array(), pht('None')));
+    $project_phids = $task->getProjectPHIDs();
+    if ($project_phids) {
+      require_celerity_resource('maniphest-task-summary-css');
+
+      // If we end up with real-world projects with many hundreds of columns, it
+      // might be better to just load all the edges, then load those columns and
+      // work backward that way, or denormalize this data more.
+
+      $columns = id(new PhabricatorProjectColumnQuery())
+        ->setViewer($viewer)
+        ->withProjectPHIDs($project_phids)
+        ->execute();
+      $columns = mpull($columns, null, 'getPHID');
+
+      $column_edge_type = PhabricatorEdgeConfig::TYPE_OBJECT_HAS_COLUMN;
+      $all_column_phids = array_keys($columns);
+
+      $column_edge_query = id(new PhabricatorEdgeQuery())
+        ->withSourcePHIDs(array($task->getPHID()))
+        ->withEdgeTypes(array($column_edge_type))
+        ->withDestinationPHIDs($all_column_phids);
+      $column_edge_query->execute();
+      $in_column_phids = array_fuse($column_edge_query->getDestinationPHIDs());
+
+      $column_groups = mgroup($columns, 'getProjectPHID');
+
+      $project_handles = array();
+      $project_annotations = array();
+      foreach ($project_phids as $project_phid) {
+        $handle = $this->getHandle($project_phid);
+        $project_handles[] = $handle;
+
+        $columns = idx($column_groups, $project_phid, array());
+        $column = head(array_intersect_key($columns, $in_column_phids));
+        if ($column) {
+          $column_name = pht('(%s)', $column->getDisplayName());
+          $column_link = phutil_tag(
+            'a',
+            array(
+              'href' => $handle->getURI().'board/',
+              'class' => 'maniphest-board-link',
+            ),
+            $column_name);
+
+          $project_annotations[$project_phid] = array(
+            ' ',
+            $column_link);
+        }
+      }
+
+      $project_rows = id(new PHUIHandleTagListView())
+        ->setHandles($project_handles)
+        ->setAnnotations($project_annotations);
+    } else {
+      $project_rows = phutil_tag('em', array(), pht('None'));
+    }
+
+    $view->addProperty(pht('Projects'), $project_rows);
 
     $edge_types = array(
       PhabricatorEdgeConfig::TYPE_TASK_DEPENDED_ON_BY_TASK
-      => pht('Dependent Tasks'),
+      => pht('Blocks'),
       PhabricatorEdgeConfig::TYPE_TASK_DEPENDS_ON_TASK
-      => pht('Depends On'),
+      => pht('Blocked By'),
       PhabricatorEdgeConfig::TYPE_TASK_HAS_RELATED_DREV
       => pht('Differential Revisions'),
       PhabricatorEdgeConfig::TYPE_TASK_HAS_MOCK

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group console
- */
 final class DarkConsoleDataController extends PhabricatorController {
 
   private $key;
@@ -13,6 +10,10 @@ final class DarkConsoleDataController extends PhabricatorController {
 
   public function shouldRequireEnabledUser() {
     return !PhabricatorEnv::getEnvConfig('darkconsole.always-on');
+  }
+
+  public function shouldAllowPartialSessions() {
+    return true;
   }
 
   public function willProcessRequest(array $data) {
@@ -58,12 +59,17 @@ final class DarkConsoleDataController extends PhabricatorController {
 
         $panel = $obj->renderPanel();
 
-        if (!empty($_COOKIE['phsid'])) {
-          $panel = PhutilSafeHTML::applyFunction(
-            'str_replace',
-            $_COOKIE['phsid'],
-            '(session-key)',
-            $panel);
+        // Because cookie names can now be prefixed, wipe out any cookie value
+        // with the session cookie name anywhere in its name.
+        $pattern = '('.preg_quote(PhabricatorCookies::COOKIE_SESSION).')';
+        foreach ($_COOKIE as $cookie_name => $cookie_value) {
+          if (preg_match($pattern, $cookie_name)) {
+            $panel = PhutilSafeHTML::applyFunction(
+              'str_replace',
+              $cookie_value,
+              '(session-key)',
+              $panel);
+          }
         }
 
         $output['panel'][$class] = $panel;

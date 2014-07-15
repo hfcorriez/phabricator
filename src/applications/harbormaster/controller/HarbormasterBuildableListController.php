@@ -1,8 +1,6 @@
 <?php
 
-final class HarbormasterBuildableListController
-  extends HarbormasterController
-  implements PhabricatorApplicationSearchResultsControllerInterface {
+final class HarbormasterBuildableListController extends HarbormasterController {
 
   private $queryKey;
 
@@ -24,60 +22,6 @@ final class HarbormasterBuildableListController
     return $this->delegateToController($controller);
   }
 
-  public function renderResultsList(
-    array $buildables,
-    PhabricatorSavedQuery $query) {
-    assert_instances_of($buildables, 'HarbormasterBuildable');
-
-    $viewer = $this->getRequest()->getUser();
-
-    $list = new PHUIObjectItemListView();
-    foreach ($buildables as $buildable) {
-      $id = $buildable->getID();
-
-      $item = id(new PHUIObjectItemView())
-        ->setHeader(pht('Buildable %d', $buildable->getID()));
-      $item->addAttribute($buildable->getContainerHandle()->getName());
-      $item->addAttribute($buildable->getBuildableHandle()->getFullName());
-
-      if ($id) {
-        $item->setHref("/B{$id}");
-      }
-
-      if ($buildable->getIsManualBuildable()) {
-        $item->addIcon('wrench-grey', pht('Manual'));
-      }
-
-      $list->addItem($item);
-
-
-
-      // TODO: This is proof-of-concept for getting meaningful status
-      // information into this list, and should get an improvement pass
-      // once we're a little farther along.
-
-      $all_pass = true;
-      $any_fail = false;
-      foreach ($buildable->getBuilds() as $build) {
-        if ($build->getBuildStatus() != HarbormasterBuild::STATUS_PASSED) {
-          $all_pass = false;
-        }
-        if ($build->getBuildStatus() == HarbormasterBuild::STATUS_FAILED ||
-            $build->getBuildStatus() == HarbormasterBuild::STATUS_ERROR) {
-          $any_fail = true;
-        }
-      }
-
-      if ($any_fail) {
-        $item->setBarColor('red');
-      } else if ($all_pass) {
-        $item->setBarColor('green');
-      }
-    }
-
-    return $list;
-  }
-
   public function buildSideNavView($for_app = false) {
     $user = $this->getRequest()->getUser();
 
@@ -87,10 +31,6 @@ final class HarbormasterBuildableListController
     id(new HarbormasterBuildableSearchEngine())
       ->setViewer($user)
       ->addNavigationItems($nav->getMenu());
-
-    if ($for_app) {
-      $nav->addFilter('new/', pht('New Build Plan'));
-    }
 
     $nav->addLabel(pht('Build Plans'));
     $nav->addFilter('plan/', pht('Manage Build Plans'));

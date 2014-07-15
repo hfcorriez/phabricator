@@ -16,7 +16,7 @@ final class DiffusionServeController extends DiffusionController {
       // We get this initially for `info/refs`.
       // Git also gives us a User-Agent like "git/1.8.2.3".
       $vcs = PhabricatorRepositoryType::REPOSITORY_TYPE_GIT;
-    } else if (strncmp($user_agent, "git/", 4) === 0) {
+    } else if (strncmp($user_agent, 'git/', 4) === 0) {
       $vcs = PhabricatorRepositoryType::REPOSITORY_TYPE_GIT;
     } else if ($content_type == 'application/x-git-upload-pack-request') {
       // We get this for `git-upload-pack`.
@@ -51,6 +51,7 @@ final class DiffusionServeController extends DiffusionController {
     if (!preg_match($regex, (string)$uri, $matches)) {
       return null;
     }
+
     return $matches['callsign'];
   }
 
@@ -244,7 +245,7 @@ final class DiffusionServeController extends DiffusionController {
     switch ($repository->getVersionControlSystem()) {
       case PhabricatorRepositoryType::REPOSITORY_TYPE_GIT:
         $service = $request->getStr('service');
-        $path = $this->getRequestDirectoryPath();
+        $path = $this->getRequestDirectoryPath($repository);
         // NOTE: Service names are the reverse of what you might expect, as they
         // are from the point of view of the server. The main read service is
         // "git-upload-pack", and the main write service is "git-receive-pack".
@@ -282,7 +283,7 @@ final class DiffusionServeController extends DiffusionController {
     PhabricatorUser $viewer) {
     $request = $this->getRequest();
 
-    $request_path = $this->getRequestDirectoryPath();
+    $request_path = $this->getRequestDirectoryPath($repository);
     $repository_root = $repository->getLocalPath();
 
     // Rebuild the query string to strip `__magic__` parameters and prevent
@@ -304,7 +305,7 @@ final class DiffusionServeController extends DiffusionController {
     // resolve the binary first.
     $bin = Filesystem::resolveBinary('git-http-backend');
     if (!$bin) {
-      throw new Exception("Unable to find `git-http-backend` in PATH!");
+      throw new Exception('Unable to find `git-http-backend` in PATH!');
     }
 
     $env = array(
@@ -351,10 +352,33 @@ final class DiffusionServeController extends DiffusionController {
     return id(new DiffusionGitResponse())->setGitData($stdout);
   }
 
-  private function getRequestDirectoryPath() {
+  private function getRequestDirectoryPath(PhabricatorRepository $repository) {
     $request = $this->getRequest();
     $request_path = $request->getRequestURI()->getPath();
-    return preg_replace('@^/diffusion/[A-Z]+@', '', $request_path);
+    $base_path = preg_replace('@^/diffusion/[A-Z]+@', '', $request_path);
+
+    // For Git repositories, strip an optional directory component if it
+    // isn't the name of a known Git resource. This allows users to clone
+    // repositories as "/diffusion/X/anything.git", for example.
+    if ($repository->isGit()) {
+      $known = array(
+        'info',
+        'git-upload-pack',
+        'git-receive-pack',
+      );
+
+      foreach ($known as $key => $path) {
+        $known[$key] = preg_quote($path, '@');
+      }
+
+      $known = implode('|', $known);
+
+      if (preg_match('@^/([^/]+)/('.$known.')(/|$)@', $base_path)) {
+        $base_path = preg_replace('@^/([^/]+)@', '', $base_path);
+      }
+    }
+
+    return $base_path;
   }
 
   private function authenticateHTTPRepositoryUser(
@@ -402,6 +426,18 @@ final class DiffusionServeController extends DiffusionController {
       return null;
     }
 
+    // If the user's password is stored using a less-than-optimal hash, upgrade
+    // them to the strongest available hash.
+
+    $hash_envelope = new PhutilOpaqueEnvelope(
+      $password_entry->getPasswordHash());
+    if (PhabricatorPasswordHasher::canUpgradeHash($hash_envelope)) {
+      $password_entry->setPassword($password, $user);
+      $unguarded = AphrontWriteGuard::beginScopedUnguardedWrites();
+        $password_entry->save();
+      unset($unguarded);
+    }
+
     return $user;
   }
 
@@ -412,7 +448,7 @@ final class DiffusionServeController extends DiffusionController {
 
     $bin = Filesystem::resolveBinary('hg');
     if (!$bin) {
-      throw new Exception("Unable to find `hg` in PATH!");
+      throw new Exception('Unable to find `hg` in PATH!');
     }
 
     $env = $this->getCommonEnvironment($viewer);
@@ -466,7 +502,7 @@ final class DiffusionServeController extends DiffusionController {
     // "Why would you do this?".
 
     $args_raw = array();
-    for ($ii = 1; ; $ii++) {
+    for ($ii = 1;; $ii++) {
       $header = 'HTTP_X_HGARG_'.$ii;
       if (!array_key_exists($header, $_SERVER)) {
         break;
@@ -565,4 +601,3 @@ final class DiffusionServeController extends DiffusionController {
   }
 
 }
-

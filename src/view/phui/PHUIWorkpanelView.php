@@ -1,11 +1,18 @@
 <?php
 
-final class PHUIWorkpanelView extends AphrontView {
+final class PHUIWorkpanelView extends AphrontTagView {
 
   private $cards = array();
   private $header;
+  private $editURI;
   private $headerAction;
   private $footerAction;
+  private $headerColor = PHUIActionHeaderView::HEADER_GREY;
+
+  public function setHeaderAction(PHUIIconView $header_action) {
+    $this->headerAction = $header_action;
+    return $this;
+  }
 
   public function setCards(PHUIObjectItemListView $cards) {
     $this->cards[] = $cards;
@@ -17,9 +24,8 @@ final class PHUIWorkpanelView extends AphrontView {
     return $this;
   }
 
-  public function setHeaderAction($header_action) {
-    // TODO: This doesn't do anything?
-    $this->headerAction = $header_action;
+  public function setEditURI($edit_uri) {
+    $this->editURI = $edit_uri;
     return $this;
   }
 
@@ -28,9 +34,22 @@ final class PHUIWorkpanelView extends AphrontView {
     return $this;
   }
 
-  public function render() {
+  public function setHeaderColor($header_color) {
+    $this->headerColor = $header_color;
+    return $this;
+  }
+
+  public function getTagAttributes() {
+    return array(
+      'class' => 'phui-workpanel-view',
+    );
+  }
+
+  public function getTagContent() {
     require_celerity_resource('phui-workpanel-view-css');
 
+    $classes = array();
+    $classes[] = 'phui-workpanel-view-inner';
     $footer = '';
     if ($this->footerAction) {
       $footer_tag = $this->footerAction;
@@ -42,9 +61,23 @@ final class PHUIWorkpanelView extends AphrontView {
           $footer_tag);
     }
 
-    $header = id(new PhabricatorActionHeaderView())
+    $header_edit = null;
+    if ($this->editURI) {
+      $header_edit = id(new PHUIIconView())
+        ->setIconFont('fa-pencil')
+        ->setHref($this->editURI);
+    }
+    $header = id(new PHUIActionHeaderView())
       ->setHeaderTitle($this->header)
-      ->setHeaderColor(PhabricatorActionHeaderView::HEADER_GREY);
+      ->setHeaderColor($this->headerColor);
+    if ($header_edit) {
+      $header->addAction($header_edit);
+    }
+    if ($this->headerAction) {
+      $header->addAction($this->headerAction);
+    }
+
+    $classes[] = 'phui-workpanel-'.$this->headerColor;
 
     $body = phutil_tag(
       'div',
@@ -56,7 +89,7 @@ final class PHUIWorkpanelView extends AphrontView {
     $view = phutil_tag(
       'div',
       array(
-        'class' => 'phui-workpanel-view-inner',
+        'class' => implode(' ', $classes),
       ),
       array(
         $header,
@@ -64,11 +97,6 @@ final class PHUIWorkpanelView extends AphrontView {
         $footer,
       ));
 
-    return phutil_tag(
-      'div',
-        array(
-          'class' => 'phui-workpanel-view'
-        ),
-        $view);
+    return $view;
   }
 }

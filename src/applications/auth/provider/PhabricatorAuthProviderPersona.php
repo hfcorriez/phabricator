@@ -29,7 +29,7 @@ final class PhabricatorAuthProviderPersona
     Javelin::initBehavior(
       'persona-login',
       array(
-        'loginURI' => $this->getLoginURI(),
+        'loginURI' => PhabricatorEnv::getURI($this->getLoginURI()),
       ));
 
     return $this->renderStandardLoginButton(
@@ -55,12 +55,12 @@ final class PhabricatorAuthProviderPersona
     $response = null;
 
     if (!$request->isAjax()) {
-      throw new Exception("Expected this request to come via Ajax.");
+      throw new Exception('Expected this request to come via Ajax.');
     }
 
     $assertion = $request->getStr('assertion');
     if (!$assertion) {
-      throw new Exception("Expected identity assertion.");
+      throw new Exception('Expected identity assertion.');
     }
 
     $adapter->setAssertion($assertion);

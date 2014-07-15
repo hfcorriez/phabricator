@@ -3,6 +3,14 @@
 final class DrydockLogSearchEngine
   extends PhabricatorApplicationSearchEngine {
 
+  public function getResultTypeDescription() {
+    return pht('Drydock Logs');
+  }
+
+  public function getApplicationClassName() {
+    return 'PhabricatorApplicationDrydock';
+  }
+
   public function buildSavedQueryFromRequest(AphrontRequest $request) {
     $saved = new PhabricatorSavedQuery();
 
@@ -43,6 +51,17 @@ final class DrydockLogSearchEngine
     }
 
     return parent::buildSavedQueryFromBuiltin($query_key);
+  }
+
+  protected function renderResultList(
+    array $logs,
+    PhabricatorSavedQuery $query,
+    array $handles) {
+
+    return id(new DrydockLogListView())
+      ->setUser($this->requireViewer())
+      ->setLogs($logs)
+      ->render();
   }
 
 }

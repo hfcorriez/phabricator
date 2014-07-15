@@ -3,11 +3,8 @@
 /**
  * Query tasks by specific criteria. This class uses the higher-performance
  * but less-general Maniphest indexes to satisfy queries.
- *
- * @group maniphest
  */
-final class ManiphestTaskQuery
-  extends PhabricatorCursorPagedPolicyAwareQuery {
+final class ManiphestTaskQuery extends PhabricatorCursorPagedPolicyAwareQuery {
 
   private $taskIDs             = array();
   private $taskPHIDs           = array();
@@ -22,6 +19,8 @@ final class ManiphestTaskQuery
   private $includeNoProject    = null;
   private $dateCreatedAfter;
   private $dateCreatedBefore;
+  private $dateModifiedAfter;
+  private $dateModifiedBefore;
 
   private $fullTextSearch   = '';
 
@@ -93,6 +92,22 @@ final class ManiphestTaskQuery
     return $this;
   }
 
+  /**
+   * Add an additional "all projects" constraint to existing filters.
+   *
+   * This is used by boards to supplement queries.
+   *
+   * @param list<phid> List of project PHIDs to add to any existing constriant.
+   * @return this
+   */
+  public function addWithAllProjects(array $projects) {
+    if ($this->projectPHIDs === null) {
+      $this->projectPHIDs = array();
+    }
+
+    return $this->withAllProjects(array_merge($this->projectPHIDs, $projects));
+  }
+
   public function withoutProjects(array $projects) {
     $this->xprojectPHIDs = $projects;
     return $this;
@@ -153,8 +168,17 @@ final class ManiphestTaskQuery
     return $this;
   }
 
-  public function loadPage() {
+  public function withDateModifiedBefore($date_modified_before) {
+    $this->dateModifiedBefore = $date_modified_before;
+    return $this;
+  }
 
+  public function withDateModifiedAfter($date_modified_after) {
+    $this->dateModifiedAfter = $date_modified_after;
+    return $this;
+  }
+
+  public function loadPage() {
     // TODO: (T603) It is possible for a user to find the PHID of a project
     // they can't see, then query for tasks in that project and deduce the
     // identity of unknown/invisible projects. Before we allow the user to
@@ -191,6 +215,20 @@ final class ManiphestTaskQuery
         $conn,
         'dateCreated <= %d',
         $this->dateCreatedBefore);
+    }
+
+    if ($this->dateModifiedAfter) {
+      $where[] = qsprintf(
+        $conn,
+        'dateModified >= %d',
+        $this->dateModifiedAfter);
+    }
+
+    if ($this->dateModifiedBefore) {
+      $where[] = qsprintf(
+        $conn,
+        'dateModified <= %d',
+        $this->dateModifiedBefore);
     }
 
     $where[] = $this->buildPagingClause($conn);
@@ -278,6 +316,12 @@ final class ManiphestTaskQuery
       $projects = mpull($projects, null, 'getPHID');
 
       foreach ($tasks as $key => $task) {
+        if (!$task->getGroupByProjectPHID()) {
+          // This task is either not in any projects, or only in projects
+          // which we're ignoring because they're being queried for explicitly.
+          continue;
+        }
+
         if (empty($projects[$task->getGroupByProjectPHID()])) {
           unset($tasks[$key]);
         }
@@ -310,7 +354,6 @@ final class ManiphestTaskQuery
   }
 
   private function buildStatusWhereClause(AphrontDatabaseConnection $conn) {
-
     static $map = array(
       self::STATUS_RESOLVED   => ManiphestTaskStatus::STATUS_CLOSED_RESOLVED,
       self::STATUS_WONTFIX    => ManiphestTaskStatus::STATUS_CLOSED_WONTFIX,
@@ -323,9 +366,15 @@ final class ManiphestTaskQuery
       case self::STATUS_ANY:
         return null;
       case self::STATUS_OPEN:
-        return 'status = 0';
+        return qsprintf(
+          $conn,
+          'status IN (%Ls)',
+          ManiphestTaskStatus::getOpenStatusConstants());
       case self::STATUS_CLOSED:
-        return 'status > 0';
+        return qsprintf(
+          $conn,
+          'status IN (%Ls)',
+          ManiphestTaskStatus::getClosedStatusConstants());
       default:
         $constant = idx($map, $this->status);
         if (!$constant) {
@@ -333,7 +382,7 @@ final class ManiphestTaskQuery
         }
         return qsprintf(
           $conn,
-          'status = %d',
+          'status = %s',
           $constant);
     }
   }
@@ -342,7 +391,7 @@ final class ManiphestTaskQuery
     if ($this->statuses) {
       return qsprintf(
         $conn,
-        'status IN (%Ld)',
+        'status IN (%Ls)',
         $this->statuses);
     }
     return null;
@@ -358,7 +407,6 @@ final class ManiphestTaskQuery
 
     return null;
   }
-
 
   private function buildAuthorWhereClause(AphrontDatabaseConnection $conn) {
     if (!$this->authorPHIDs) {
@@ -406,8 +454,9 @@ final class ManiphestTaskQuery
 
     // In doing a fulltext search, we first find all the PHIDs that match the
     // fulltext search, and then use that to limit the rest of the search
-    $fulltext_query = new PhabricatorSearchQuery();
-    $fulltext_query->setQuery($this->fullTextSearch);
+    $fulltext_query = id(new PhabricatorSavedQuery())
+      ->setEngineClassName('PhabricatorSearchApplicationSearchEngine')
+      ->setParameter('query', $this->fullTextSearch);
 
     // NOTE: Setting this to something larger than 2^53 will raise errors in
     // ElasticSearch, and billions of results won't fit in memory anyway.
@@ -793,8 +842,8 @@ final class ManiphestTaskQuery
       case self::GROUP_STATUS:
         $columns[] = array(
           'name' => 'task.status',
-          'value' => (int)$group_id,
-          'type' => 'int',
+          'value' => $group_id,
+          'type' => 'string',
         );
         break;
       case self::GROUP_PROJECT:
@@ -885,7 +934,6 @@ final class ManiphestTaskQuery
   protected function getApplicationSearchObjectPHIDColumn() {
     return 'task.phid';
   }
-
 
   public function getQueryApplicationClass() {
     return 'PhabricatorApplicationManiphest';

@@ -8,6 +8,8 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
   private $auditors = array();
   private $ccs = array();
 
+  private $noEmail;
+
   public function __construct(PhabricatorRepositoryCommit $commit) {
     $this->commit = $commit;
     return $this;
@@ -25,6 +27,11 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
 
   public function setAttachInlineComments($attach_inline_comments) {
     $this->attachInlineComments = $attach_inline_comments;
+    return $this;
+  }
+
+  public function setNoEmail($no_email) {
+    $this->noEmail = $no_email;
     return $this;
   }
 
@@ -69,6 +76,7 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
 
     // Find any "@mentions" in the content blocks.
     $mention_ccs = PhabricatorMarkupEngine::extractPHIDsFromMentions(
+      $this->getActor(),
       $content_blocks);
     if ($mention_ccs) {
       $metacc = idx(
@@ -137,7 +145,7 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
         $actor_request = id(new PhabricatorRepositoryAuditRequest())
           ->setCommitPHID($commit->getPHID())
           ->setAuditorPHID($actor->getPHID())
-          ->setAuditReasons(array("Resigned"));
+          ->setAuditReasons(array('Resigned'));
       }
 
       $actor_request
@@ -212,7 +220,7 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
           ->setCommitPHID($commit->getPHID())
           ->setAuditorPHID($actor->getPHID())
           ->setAuditStatus($new_status)
-          ->setAuditReasons(array("Voluntary Participant"))
+          ->setAuditReasons(array('Voluntary Participant'))
           ->save();
         $requests[] = $request;
       }
@@ -253,7 +261,7 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
           ->setAuditorPHID($auditor_phid)
           ->setAuditStatus($audit_requested)
           ->setAuditReasons(
-            array('Added by ' . $actor->getUsername()))
+            array('Added by '.$actor->getUsername()))
           ->save();
       }
     }
@@ -266,7 +274,7 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
           ->setAuditorPHID($cc_phid)
           ->setAuditStatus($audit_cc)
           ->setAuditReasons(
-            array('Added by ' . $actor->getUsername()))
+            array('Added by '.$actor->getUsername()))
           ->save();
       }
     }
@@ -295,9 +303,11 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
     $this->publishFeedStory($comment, $feed_phids);
 
     id(new PhabricatorSearchIndexer())
-      ->indexDocumentByPHID($commit->getPHID());
+      ->queueDocumentForIndexing($commit->getPHID());
 
-    $this->sendMail($comment, $other_comments, $inline_comments, $requests);
+    if (!$this->noEmail) {
+      $this->sendMail($comment, $other_comments, $inline_comments, $requests);
+    }
   }
 
 
@@ -419,6 +429,8 @@ final class PhabricatorAuditCommentEditor extends PhabricatorEditor {
 
     $email_to = array();
     $email_cc = array();
+
+    $email_to[$comment->getActorPHID()] = true;
 
     $author_phid = $data->getCommitDetail('authorPHID');
     if ($author_phid) {

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
 
   public function shouldRequireAuthentication() {
@@ -15,7 +12,7 @@ final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
   }
 
   public function getMethodDescription() {
-    return "Retrieve certificate information for a user.";
+    return 'Retrieve certificate information for a user.';
   }
 
   public function defineParamTypes() {
@@ -31,22 +28,20 @@ final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
 
   public function defineErrorTypes() {
     return array(
-      "ERR-BAD-TOKEN" => "Token does not exist or has expired.",
-      "ERR-RATE-LIMIT" =>
-        "You have made too many invalid token requests recently. Wait before ".
-        "making more.",
+      'ERR-BAD-TOKEN' => 'Token does not exist or has expired.',
+      'ERR-RATE-LIMIT' =>
+        'You have made too many invalid token requests recently. Wait before '.
+        'making more.',
     );
   }
 
   protected function execute(ConduitAPIRequest $request) {
-    $this->validateHost($request->getValue('host'));
-
     $failed_attempts = PhabricatorUserLog::loadRecentEventsFromThisIP(
       PhabricatorUserLog::ACTION_CONDUIT_CERTIFICATE_FAILURE,
       60 * 5);
 
     if (count($failed_attempts) > 5) {
-      $this->logFailure();
+      $this->logFailure($request);
       throw new ConduitException('ERR-RATE-LIMIT');
     }
 
@@ -56,13 +51,13 @@ final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
       trim($token));
 
     if (!$info || $info->getDateCreated() < time() - (60 * 15)) {
-      $this->logFailure();
+      $this->logFailure($request, $info);
       throw new ConduitException('ERR-BAD-TOKEN');
     } else {
-      $log = id(new PhabricatorUserLog())
-        ->setActorPHID($info->getUserPHID())
-        ->setUserPHID($info->getUserPHID())
-        ->setAction(PhabricatorUserLog::ACTION_CONDUIT_CERTIFICATE)
+      $log = PhabricatorUserLog::initializeNewLog(
+          $request->getUser(),
+          $info->getUserPHID(),
+          PhabricatorUserLog::ACTION_CONDUIT_CERTIFICATE)
         ->save();
     }
 
@@ -70,7 +65,7 @@ final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
       'phid = %s',
       $info->getUserPHID());
     if (!$user) {
-      throw new Exception("Certificate token points to an invalid user!");
+      throw new Exception('Certificate token points to an invalid user!');
     }
 
     return array(
@@ -79,11 +74,14 @@ final class ConduitAPI_conduit_getcertificate_Method extends ConduitAPIMethod {
     );
   }
 
-  private function logFailure() {
+  private function logFailure(
+    ConduitAPIRequest $request,
+    PhabricatorConduitCertificateToken $info = null) {
 
-    $log = id(new PhabricatorUserLog())
-      ->setUserPHID('-')
-      ->setAction(PhabricatorUserLog::ACTION_CONDUIT_CERTIFICATE_FAILURE)
+    $log = PhabricatorUserLog::initializeNewLog(
+        $request->getUser(),
+        $info ? $info->getUserPHID() : '-',
+        PhabricatorUserLog::ACTION_CONDUIT_CERTIFICATE_FAILURE)
       ->save();
   }
 

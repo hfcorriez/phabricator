@@ -13,10 +13,8 @@
  *
  * @param function Callback function to invoke after DOMContentReady.
  * @return void
- * @group util
  */
 JX.onload = function(callback) {
   // This isn't the real function definition, it's only defined here to let the
   // documentation generator find it. The actual definition is in init.js.
 };
-

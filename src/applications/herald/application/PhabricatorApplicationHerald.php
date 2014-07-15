@@ -19,7 +19,7 @@ final class PhabricatorApplicationHerald extends PhabricatorApplication {
   }
 
   public function getHelpURI() {
-    return PhabricatorEnv::getDoclink('article/Herald_User_Guide.html');
+    return PhabricatorEnv::getDoclink('Herald User Guide');
   }
 
   public function getFlavorText() {
@@ -27,7 +27,7 @@ final class PhabricatorApplicationHerald extends PhabricatorApplication {
   }
 
   public function getApplicationGroup() {
-    return self::GROUP_ORGANIZATION;
+    return self::GROUP_UTILITIES;
   }
 
   public function getRemarkupRules() {
@@ -47,10 +47,13 @@ final class PhabricatorApplicationHerald extends PhabricatorApplication {
           'HeraldDisableController',
         'history/(?:(?P<id>[1-9]\d*)/)?' => 'HeraldRuleEditHistoryController',
         'test/' => 'HeraldTestConsoleController',
-        'transcript/' => 'HeraldTranscriptListController',
-        'transcript/(?P<id>[1-9]\d*)/(?:(?P<filter>\w+)/)?'
+        'transcript/' => array(
+          '' => 'HeraldTranscriptListController',
+          '(?:query/(?P<queryKey>[^/]+)/)?' => 'HeraldTranscriptListController',
+          '(?P<id>[1-9]\d*)/(?:(?P<filter>\w+)/)?'
           => 'HeraldTranscriptController',
-      ),
+        )
+      )
     );
   }
 

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group console
- */
 final class DarkConsoleEventPluginAPI extends PhabricatorEventListener {
 
   private static $events = array();
@@ -28,4 +25,3 @@ final class DarkConsoleEventPluginAPI extends PhabricatorEventListener {
   }
 
 }
-

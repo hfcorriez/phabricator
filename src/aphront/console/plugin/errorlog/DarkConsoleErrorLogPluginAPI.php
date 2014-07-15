@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group console
- */
 final class DarkConsoleErrorLogPluginAPI {
 
   private static $errors = array();
@@ -76,4 +73,3 @@ final class DarkConsoleErrorLogPluginAPI {
   }
 
 }
-

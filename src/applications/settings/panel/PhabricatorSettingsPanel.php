@@ -12,10 +12,36 @@
  * @task config   Panel Configuration
  * @task panel    Panel Implementation
  * @task internal Internals
- *
- * @group settings
  */
 abstract class PhabricatorSettingsPanel {
+
+  private $user;
+  private $viewer;
+  private $overrideURI;
+
+
+  public function setUser(PhabricatorUser $user) {
+    $this->user = $user;
+    return $this;
+  }
+
+  public function getUser() {
+    return $this->user;
+  }
+
+  public function setViewer(PhabricatorUser $viewer) {
+    $this->viewer = $viewer;
+    return $this;
+  }
+
+  public function getViewer() {
+    return $this->viewer;
+  }
+
+  public function setOverrideURI($override_uri) {
+    $this->overrideURI = $override_uri;
+    return $this;
+  }
 
 
 /* -(  Panel Configuration  )------------------------------------------------ */
@@ -86,6 +112,18 @@ abstract class PhabricatorSettingsPanel {
   }
 
 
+  /**
+   * Return true if this panel is available to administrators while editing
+   * system agent accounts.
+   *
+   * @return bool True to enable edit by administrators.
+   * @task config
+   */
+  public function isEditableByAdministrators() {
+    return false;
+  }
+
+
 /* -(  Panel Implementation  )----------------------------------------------- */
 
 
@@ -115,9 +153,21 @@ abstract class PhabricatorSettingsPanel {
    * @task panel
    */
   final public function getPanelURI($path = '') {
+    $path = ltrim($path, '/');
+
+    if ($this->overrideURI) {
+      return rtrim($this->overrideURI, '/').'/'.$path;
+    }
+
     $key = $this->getPanelKey();
     $key = phutil_escape_uri($key);
-    return '/settings/panel/'.$key.'/'.ltrim($path, '/');
+
+    if ($this->getUser()->getPHID() != $this->getViewer()->getPHID()) {
+      $user_id = $this->getUser()->getID();
+      return "/settings/{$user_id}/panel/{$key}/{$path}";
+    } else {
+      return "/settings/panel/{$key}/{$path}";
+    }
   }
 
 

@@ -9,7 +9,7 @@ final class PhragmentBrowseController extends PhragmentController {
   }
 
   public function willProcessRequest(array $data) {
-    $this->dblob = idx($data, "dblob", "");
+    $this->dblob = idx($data, 'dblob', '');
   }
 
   public function processRequest() {
@@ -34,7 +34,7 @@ final class PhragmentBrowseController extends PhragmentController {
         id(new PHUIListItemView())
           ->setName(pht('Create Fragment'))
           ->setHref($this->getApplicationURI('/create/'.$path))
-          ->setIcon('create'));
+          ->setIcon('fa-plus-square'));
     }
 
     $current_box = $this->createCurrentFragmentView($current, false);
@@ -91,7 +91,7 @@ final class PhragmentBrowseController extends PhragmentController {
         $list),
       array(
         'title' => pht('Browse Fragments'),
-        'device' => true));
+      ));
   }
 
 }

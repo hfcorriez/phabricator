@@ -1,12 +1,9 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_macro_query_Method extends ConduitAPI_macro_Method {
 
   public function getMethodDescription() {
-    return "Retrieve image macro information.";
+    return 'Retrieve image macro information.';
   }
 
   public function defineParamTypes() {

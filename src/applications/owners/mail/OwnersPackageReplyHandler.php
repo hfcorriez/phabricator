@@ -3,7 +3,7 @@
 final class OwnersPackageReplyHandler extends PhabricatorMailReplyHandler {
   public function validateMailReceiver($mail_receiver) {
     if (!($mail_receiver instanceof PhabricatorOwnersPackage)) {
-      throw new Exception("Receiver is not a PhabricatorOwnersPackage!");
+      throw new Exception('Receiver is not a PhabricatorOwnersPackage!');
     }
   }
 
@@ -28,5 +28,3 @@ final class OwnersPackageReplyHandler extends PhabricatorMailReplyHandler {
     return;
   }
 }
-
-

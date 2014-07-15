@@ -30,6 +30,10 @@ final class PHUIFeedStoryView extends AphrontView {
     return $this;
   }
 
+  public function getTitle() {
+    return $this->title;
+  }
+
   public function setEpoch($epoch) {
     $this->epoch = $epoch;
     return $this;
@@ -99,13 +103,27 @@ final class PHUIFeedStoryView extends AphrontView {
     return $this->href;
   }
 
-  public function renderNotification() {
+  public function renderNotification($user) {
     $classes = array(
       'phabricator-notification',
     );
 
     if (!$this->viewed) {
       $classes[] = 'phabricator-notification-unread';
+    }
+    if ($this->epoch) {
+      if ($user) {
+        $foot = phabricator_datetime($this->epoch, $user);
+        $foot = phutil_tag(
+          'span',
+          array(
+            'class' => 'phabricator-notification-date'),
+          $foot);
+      } else {
+        $foot = null;
+      }
+    } else {
+      $foot = pht('No time specified.');
     }
 
     return javelin_tag(
@@ -117,14 +135,13 @@ final class PHUIFeedStoryView extends AphrontView {
           'href' => $this->getHref(),
         ),
       ),
-      $this->title);
+      array($this->title, $foot));
   }
 
   public function render() {
 
     require_celerity_resource('phui-feed-story-css');
     Javelin::initBehavior('phabricator-hovercards');
-    $oneline = !$this->hasChildren();
 
     $body = null;
     $foot = null;
@@ -168,18 +185,6 @@ final class PHUIFeedStoryView extends AphrontView {
       $icon->setSpriteSheet(PHUIIconView::SPRITE_APPS);
     }
 
-    $ol_foot = null;
-    if ($oneline) {
-      $ol_foot = phutil_tag(
-        'div',
-          array(
-            'class' => 'phui-feed-story-oneline-foot'
-          ),
-          array(
-            $icon,
-            $foot));
-    }
-
     $action_list = array();
     $icons = null;
     foreach ($this->actions as $action) {
@@ -205,10 +210,9 @@ final class PHUIFeedStoryView extends AphrontView {
         'class' => 'phui-feed-story-head',
       ),
       array(
-        (!$oneline ? $actor : null),
+        $actor,
         nonempty($this->title, pht('Untitled Story')),
         $icons,
-        $ol_foot
       ));
 
     if (!empty($this->tokenBar)) {
@@ -231,27 +235,20 @@ final class PHUIFeedStoryView extends AphrontView {
         $body_content);
     }
 
-    if ($oneline) {
-      $foot = null;
-    } else {
-      $foot = phutil_tag(
-        'div',
-        array(
-          'class' => 'phui-feed-story-foot',
-        ),
-        array(
-          $icon,
-          $foot));
-    }
+    $foot = phutil_tag(
+      'div',
+      array(
+        'class' => 'phui-feed-story-foot',
+      ),
+      array(
+        $icon,
+        $foot));
 
     $classes = array('phui-feed-story');
-    if ($oneline) {
-      $classes[] = 'phui-feed-story-oneline';
-    }
 
     return id(new PHUIBoxView())
       ->addClass(implode(' ', $classes))
-      ->setShadow(true)
+      ->setBorder(true)
       ->addMargin(PHUI::MARGIN_MEDIUM_BOTTOM)
       ->appendChild(array($head, $body, $foot));
   }
@@ -259,10 +256,19 @@ final class PHUIFeedStoryView extends AphrontView {
   public function setAppIconFromPHID($phid) {
     switch (phid_get_type($phid)) {
       case PholioPHIDTypeMock::TYPECONST:
-        $this->setAppIcon("pholio-dark");
+        $this->setAppIcon('pholio-dark');
         break;
       case PhabricatorMacroPHIDTypeMacro::TYPECONST:
-        $this->setAppIcon("macro-dark");
+        $this->setAppIcon('macro-dark');
+        break;
+      case ManiphestPHIDTypeTask::TYPECONST:
+        $this->setAppIcon('maniphest-dark');
+        break;
+      case DifferentialPHIDTypeRevision::TYPECONST:
+        $this->setAppIcon('differential-dark');
+        break;
+      case PhabricatorCalendarPHIDTypeEvent::TYPECONST:
+        $this->setAppIcon('calendar-dark');
         break;
     }
   }

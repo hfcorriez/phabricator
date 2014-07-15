@@ -25,170 +25,79 @@ a.phabricator-application-launch-container,
 div.phabricator-application-launch-container {
   display: block;
   float: left;
-  width: 78px;
-  height: 66px;
   overflow: hidden;
   position: relative;
-  border: 1px solid #1c1e22;
   text-decoration: none;
-}
-
-a.application-tile-full {
   width: 100%;
-  height: 52px;
-  border-bottom: none;
-  border-left: none;
-  border-right: none;
+  height: 44px;
+  border-bottom: 1px solid {$hovergrey};
 }
 
 .device-phone div.phabricator-application-launch-container {
   display: none;
 }
 
-a.application-tile-full.application-tile-create {
-  width: 88%;
-  height: 52px;
-  border-right: none;
-}
-
-.application-tile-full + .phabricator-application-launch-create {
-  float: right;
-  width: 12%;
-  height: 52px;
-  position: relative;
-  border-top: 1px solid #000;
-  border-bottom: none;
-  display: inline-block;
-  text-align: center;
-}
-
-.device-desktop a.phabricator-application-launch-create:hover {
-  background-color: #1e2225;
-  color: #fff;
-  text-decoration: none;
-}
-
-.device-desktop a.phabricator-application-launch-container:hover {
-  background-color: #1e2225;
-  text-decoration: none;
-}
-
 .phabricator-application-launch-icon {
   display: block;
   position: absolute;
-  left: 25px;
-  top: 10px;
   width: 28px;
   height: 28px;
+  top: 8px;
+  left: 8px;
 }
 
-.phabricator-application-create-icon {
-  display: inline-block;
-  margin: 20px auto;
-  width: 14px;
-  height: 14px;
-}
-
-.application-tile-full .phabricator-application-launch-icon {
-  top: 12px;
-  left: 10px;
+.device-desktop a.phabricator-application-launch-container:hover {
+  background-color: {$hovergrey};
+  text-decoration: none;
 }
 
 .phabricator-application-launch-name {
   display: block;
-  margin-top: 42px;
   font-weight: bold;
-  font-size: 11px;
-  text-align: center;
-  color: #ffffff;
-  text-shadow: 0px 1px 1px #000000;
-}
-
-.application-tile-full .phabricator-application-launch-name {
+  color: {$darkbluetext};
   font-size: 13px;
-  margin-top: 11px;
-  text-align: left;
-  margin-left: 48px;
-
+  margin: 6px 0 2px 44px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
-.application-tile-full .phabricator-application-launch-description {
-  color: #bfbfbf;
+.phabricator-application-launch-description {
+  color: {$bluetext};
   font-size: 11px;
-  margin-top: 24px;
-  margin-left: 48px;
+  margin-left: 44px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.9);
+  text-overflow: ellipsis;
+  width: 150px;
+  overflow: hidden;
+  white-space: nowrap;
+  display: inline-block;
 }
 
 .phabricator-application-beta {
   position: absolute;
   top: 4px;
-  border-radius: 10px;
-  color: white;
-  font-weight: bold;
-  padding: 1px 6px 2px;
-  border: 2px solid #333;
+  left: 4px;
+  color: {$bluetext};
   font-size: 11px;
-  box-shadow: 0 0px 2px #000;
 }
 
 .phabricator-application-launch-attention {
   position: absolute;
-  top: 4px;
-  border-radius: 10px;
-  color: white;
+  top: 8px;
+  right: 8px;
+  color: {$darkbluetext};
   font-weight: bold;
-  padding: 1px 0 2px;
-  border: 2px solid #333;
-  font-size: 11px;
-  box-shadow: 0 0px 2px #000;
+  font-size: 12px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .phabricator-application-attention-count {
-  background-color: rgb(0, 122, 255);
-  border-radius: 10px;
-  color: white;
-  font-weight: bold;
-  padding: 1px 6px 2px;
-  border: 1px solid #333;
-  font-size: 11px;
+  color: {$sky};
 }
 
-.phabricator-application-warning-count {
-  padding: 6px;
-}
-
-.phabricator-application-attention-count + .phabricator-application-warning-count {
-  margin-left: -2px;
-}
-
-.phabricator-application-launch-attention {
-  right: 4px;
-  background-color: rgb(119, 119, 119);
-}
-
-.phabricator-application-beta {
-  left: 4px;
-  background-color: rgb(109, 92, 41);
-}
-
-.application-tile-full .phabricator-application-launch-attention {
-  top: 16px;
-  right: 8px;
-}
-
-.application-tile-full .phabricator-application-launch-create {
-  display: inline-block;
-  float: right;
-  background: rgb(0, 122, 255);
-  border-radius: 5px;
-  color: white;
-  font-weight: bold;
-  padding: 1px 6px 2px;
-  border: 2px solid #333;
-  font-size: 11px;
-  box-shadow: 0 0px 2px #000;
-}
-
-.phabricator-application-launch-create {
+a.phabricator-application-launch-phone-only {
   display: none;
+}
+
+.device-phone a.phabricator-application-launch-phone-only {
+  display: block;
 }

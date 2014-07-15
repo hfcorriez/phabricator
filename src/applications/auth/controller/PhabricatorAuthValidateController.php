@@ -7,13 +7,17 @@ final class PhabricatorAuthValidateController
     return false;
   }
 
+  public function shouldAllowPartialSessions() {
+    return true;
+  }
+
   public function processRequest() {
     $request = $this->getRequest();
     $viewer = $request->getUser();
 
     $failures = array();
 
-    if (!strlen($request->getStr('phusr'))) {
+    if (!strlen($request->getStr('expect'))) {
       return $this->renderErrors(
         array(
           pht(
@@ -21,8 +25,8 @@ final class PhabricatorAuthValidateController
             'phusr')));
     }
 
-    $expect_phusr = $request->getStr('phusr');
-    $actual_phusr = $request->getCookie('phusr');
+    $expect_phusr = $request->getStr('expect');
+    $actual_phusr = $request->getCookie(PhabricatorCookies::COOKIE_USERNAME);
     if ($actual_phusr != $expect_phusr) {
       if ($actual_phusr) {
         $failures[] = pht(
@@ -45,8 +49,8 @@ final class PhabricatorAuthValidateController
     if (!$failures) {
       if (!$viewer->getPHID()) {
         $failures[] = pht(
-          "Login cookie was set correctly, but your login session is not ".
-          "valid. Try clearing cookies and logging in again.");
+          'Login cookie was set correctly, but your login session is not '.
+          'valid. Try clearing cookies and logging in again.');
       }
     }
 
@@ -54,14 +58,8 @@ final class PhabricatorAuthValidateController
       return $this->renderErrors($failures);
     }
 
-    $next = $request->getCookie('next_uri');
-    $request->clearCookie('next_uri');
-
-    if (!PhabricatorEnv::isValidLocalWebResource($next)) {
-      $next = '/';
-    }
-
-    return id(new AphrontRedirectResponse())->setURI($next);
+    $finish_uri = $this->getApplicationURI('finish/');
+    return id(new AphrontRedirectResponse())->setURI($finish_uri);
   }
 
   private function renderErrors(array $messages) {

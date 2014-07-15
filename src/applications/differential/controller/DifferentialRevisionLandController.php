@@ -40,10 +40,10 @@ final class DifferentialRevisionLandController extends DifferentialController {
       $text = '';
       try {
         $response = $this->attemptLand($revision, $request);
-        $title = pht("Success!");
-        $text = pht("Revision was successfully landed.");
+        $title = pht('Success!');
+        $text = pht('Revision was successfully landed.');
       } catch (Exception $ex) {
-        $title = pht("Failed to land revision");
+        $title = pht('Failed to land revision');
         if ($ex instanceof PhutilProxyException) {
           $text = hsprintf(
             '%s:<br><pre>%s</pre>',
@@ -68,6 +68,26 @@ final class DifferentialRevisionLandController extends DifferentialController {
       return id(new AphrontDialogResponse())->setDialog($dialog);
     }
 
+    $is_disabled = $this->pushStrategy->isActionDisabled(
+      $viewer,
+      $revision,
+      $revision->getRepository());
+    if ($is_disabled) {
+      if (is_string($is_disabled)) {
+        $explain = $is_disabled;
+      } else {
+        $explain = pht('This action is not currently enabled.');
+      }
+      $dialog = id(new AphrontDialogView())
+        ->setUser($viewer)
+        ->setTitle(pht("Can't land revision"))
+        ->appendChild($explain)
+        ->addCancelButton('/D'.$revision_id);
+
+      return id(new AphrontDialogResponse())->setDialog($dialog);
+    }
+
+
     $prompt = hsprintf('%s<br><br>%s',
       pht(
         'This will squash and rebase revision %s, and push it to '.
@@ -77,7 +97,7 @@ final class DifferentialRevisionLandController extends DifferentialController {
 
     $dialog = id(new AphrontDialogView())
       ->setUser($viewer)
-      ->setTitle(pht("Land Revision %s?", $revision_id))
+      ->setTitle(pht('Land Revision %s?', $revision_id))
       ->appendChild($prompt)
       ->setSubmitURI($request->getRequestURI())
       ->addSubmitButton(pht('Land it!'))
@@ -89,13 +109,13 @@ final class DifferentialRevisionLandController extends DifferentialController {
   private function attemptLand($revision, $request) {
     $status = $revision->getStatus();
     if ($status != ArcanistDifferentialRevisionStatus::ACCEPTED) {
-      throw new Exception("Only Accepted revisions can be landed.");
+      throw new Exception('Only Accepted revisions can be landed.');
     }
 
     $repository = $revision->getRepository();
 
     if ($repository === null) {
-      throw new Exception("revision is not attached to a repository.");
+      throw new Exception('revision is not attached to a repository.');
     }
 
     $can_push = PhabricatorPolicyFilter::hasCapability(
@@ -121,6 +141,15 @@ final class DifferentialRevisionLandController extends DifferentialController {
     }
 
     $lock->unlock();
+
+    $looksoon = new ConduitCall(
+      'diffusion.looksoon',
+      array(
+        'callsigns' => array($repository->getCallsign())
+        ));
+    $looksoon->setUser($request->getUser());
+    $looksoon->execute();
+
     return $response;
   }
 
@@ -131,4 +160,3 @@ final class DifferentialRevisionLandController extends DifferentialController {
     return $lock;
   }
 }
-

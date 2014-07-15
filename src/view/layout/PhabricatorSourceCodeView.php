@@ -61,6 +61,7 @@ final class PhabricatorSourceCodeView extends AphrontView {
           pht('...'));
       } else {
         $content_number = $line_number;
+        // NOTE: See phabricator-oncopy behavior.
         $content_line = hsprintf("\xE2\x80\x8B%s", $line);
       }
 
@@ -70,7 +71,7 @@ final class PhabricatorSourceCodeView extends AphrontView {
       }
 
       if ($this->canClickHighlight) {
-        $line_uri = $this->uri . "$" . $line_number;
+        $line_uri = $this->uri.'$'.$line_number;
         $line_href = (string) new PhutilURI($line_uri);
 
         $tag_number = javelin_tag(

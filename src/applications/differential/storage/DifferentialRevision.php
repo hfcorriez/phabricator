@@ -6,7 +6,12 @@ final class DifferentialRevision extends DifferentialDAO
     PhabricatorPolicyInterface,
     PhabricatorFlaggableInterface,
     PhrequentTrackableInterface,
-    HarbormasterBuildableInterface {
+    HarbormasterBuildableInterface,
+    PhabricatorSubscribableInterface,
+    PhabricatorCustomFieldInterface,
+    PhabricatorApplicationTransactionInterface,
+    PhabricatorDestructableInterface,
+    PhabricatorProjectInterface {
 
   protected $title = '';
   protected $originalTitle;
@@ -17,8 +22,6 @@ final class DifferentialRevision extends DifferentialDAO
 
   protected $authorPHID;
   protected $lastReviewerPHID;
-
-  protected $dateCommitted;
 
   protected $lineCount = 0;
   protected $attached = array();
@@ -38,8 +41,10 @@ final class DifferentialRevision extends DifferentialDAO
   private $repository = self::ATTACHABLE;
 
   private $reviewerStatus = self::ATTACHABLE;
+  private $customFields = self::ATTACHABLE;
+  private $drafts = array();
+  private $flags = array();
 
-  const RELATIONSHIP_TABLE    = 'differential_relationship';
   const TABLE_COMMIT          = 'differential_commit';
 
   const RELATION_REVIEWER     = 'revw';
@@ -69,6 +74,11 @@ final class DifferentialRevision extends DifferentialDAO
         'unsubscribed'  => self::SERIALIZATION_JSON,
       ),
     ) + parent::getConfiguration();
+  }
+
+  public function getMonogram() {
+    $id = $this->getID();
+    return "D{$id}";
   }
 
   public function setTitle($title) {
@@ -153,15 +163,6 @@ final class DifferentialRevision extends DifferentialDAO
       DifferentialPHIDTypeRevision::TYPECONST);
   }
 
-  public function loadComments() {
-    if (!$this->getID()) {
-      return array();
-    }
-    return id(new DifferentialCommentQuery())
-      ->withRevisionIDs(array($this->getID()))
-      ->execute();
-  }
-
   public function loadActiveDiff() {
     return id(new DifferentialDiff())->loadOneWhere(
       'revisionID = %d ORDER BY id DESC LIMIT 1',
@@ -175,87 +176,30 @@ final class DifferentialRevision extends DifferentialDAO
     return parent::save();
   }
 
-  public function delete() {
-    $this->openTransaction();
-    $diffs = id(new DifferentialDiffQuery())
-      ->setViewer(PhabricatorUser::getOmnipotentUser())
-      ->withRevisionIDs(array($this->getID()))
-      ->execute();
-      foreach ($diffs as $diff) {
-        $diff->delete();
-      }
-
-      $conn_w = $this->establishConnection('w');
-
-      queryfx(
-        $conn_w,
-        'DELETE FROM %T WHERE revisionID = %d',
-        self::RELATIONSHIP_TABLE,
-        $this->getID());
-
-      queryfx(
-        $conn_w,
-        'DELETE FROM %T WHERE revisionID = %d',
-        self::TABLE_COMMIT,
-        $this->getID());
-
-      $comments = id(new DifferentialCommentQuery())
-        ->withRevisionIDs(array($this->getID()))
-        ->execute();
-      foreach ($comments as $comment) {
-        $comment->delete();
-      }
-
-      $inlines = id(new DifferentialInlineCommentQuery())
-        ->withRevisionIDs(array($this->getID()))
-        ->execute();
-      foreach ($inlines as $inline) {
-        $inline->delete();
-      }
-
-      $fields = id(new DifferentialAuxiliaryField())->loadAllWhere(
-        'revisionPHID = %s',
-        $this->getPHID());
-      foreach ($fields as $field) {
-        $field->delete();
-      }
-
-      // we have to do paths a little differentally as they do not have
-      // an id or phid column for delete() to act on
-      $dummy_path = new DifferentialAffectedPath();
-      queryfx(
-        $conn_w,
-        'DELETE FROM %T WHERE revisionID = %d',
-        $dummy_path->getTableName(),
-        $this->getID());
-
-      $result = parent::delete();
-    $this->saveTransaction();
-    return $result;
-  }
-
   public function loadRelationships() {
     if (!$this->getID()) {
       $this->relationships = array();
       return;
     }
 
-    // Read "subscribed" and "unsubscribed" data out of the old relationship
-    // table.
-    $data = queryfx_all(
-      $this->establishConnection('r'),
-      'SELECT * FROM %T WHERE revisionID = %d
-        AND relation != %s ORDER BY sequence',
-      self::RELATIONSHIP_TABLE,
-      $this->getID(),
-      self::RELATION_REVIEWER);
+    $data = array();
 
-    // Read "reviewer" data out of the new table.
+    $subscriber_phids = PhabricatorEdgeQuery::loadDestinationPHIDs(
+      $this->getPHID(),
+      PhabricatorEdgeConfig::TYPE_OBJECT_HAS_SUBSCRIBER);
+    $subscriber_phids = array_reverse($subscriber_phids);
+    foreach ($subscriber_phids as $phid) {
+      $data[] = array(
+        'relation' => self::RELATION_SUBSCRIBED,
+        'objectPHID' => $phid,
+        'reasonPHID' => null,
+      );
+    }
+
     $reviewer_phids = PhabricatorEdgeQuery::loadDestinationPHIDs(
       $this->getPHID(),
       PhabricatorEdgeConfig::TYPE_DREV_HAS_REVIEWER);
     $reviewer_phids = array_reverse($reviewer_phids);
-
     foreach ($reviewer_phids as $phid) {
       $data[] = array(
         'relation' => self::RELATION_REVIEWER,
@@ -290,12 +234,6 @@ final class DifferentialRevision extends DifferentialDAO
     return idx($this->relationships, $relation, array());
   }
 
-  public function loadUnsubscribedPHIDs() {
-    return PhabricatorEdgeQuery::loadDestinationPHIDs(
-      $this->phid,
-      PhabricatorEdgeConfig::TYPE_OBJECT_HAS_UNSUBSCRIBER);
-  }
-
   public function getPrimaryReviewer() {
     $reviewers = $this->getReviewers();
     $last = $this->lastReviewerPHID;
@@ -303,27 +241,6 @@ final class DifferentialRevision extends DifferentialDAO
       return head($this->getReviewers());
     }
     return $last;
-  }
-
-  public function loadReviewedBy() {
-    $reviewer = null;
-
-    if ($this->status == ArcanistDifferentialRevisionStatus::ACCEPTED ||
-        $this->status == ArcanistDifferentialRevisionStatus::CLOSED) {
-      $comments = $this->loadComments();
-      foreach ($comments as $comment) {
-        $action = $comment->getAction();
-        if ($action == DifferentialAction::ACTION_ACCEPT) {
-          $reviewer = $comment->getAuthorPHID();
-        } else if ($action == DifferentialAction::ACTION_REJECT ||
-                   $action == DifferentialAction::ACTION_ABANDON ||
-                   $action == DifferentialAction::ACTION_RETHINK) {
-          $reviewer = null;
-        }
-      }
-    }
-
-    return $reviewer;
   }
 
   public function getHashes() {
@@ -413,6 +330,26 @@ final class DifferentialRevision extends DifferentialDAO
     return DifferentialRevisionStatus::isClosedStatus($this->getStatus());
   }
 
+  public function getFlag(PhabricatorUser $viewer) {
+    return $this->assertAttachedKey($this->flags, $viewer->getPHID());
+  }
+
+  public function attachFlag(
+    PhabricatorUser $viewer,
+    PhabricatorFlag $flag = null) {
+    $this->flags[$viewer->getPHID()] = $flag;
+    return $this;
+  }
+
+  public function getDrafts(PhabricatorUser $viewer) {
+    return $this->assertAttachedKey($this->drafts, $viewer->getPHID());
+  }
+
+  public function attachDrafts(PhabricatorUser $viewer, array $drafts) {
+    $this->drafts[$viewer->getPHID()] = $drafts;
+    return $this;
+  }
+
 
 /* -(  HarbormasterBuildableInterface  )------------------------------------- */
 
@@ -423,6 +360,141 @@ final class DifferentialRevision extends DifferentialDAO
 
   public function getHarbormasterContainerPHID() {
     return $this->getPHID();
+  }
+
+  public function getBuildVariables() {
+    return array();
+  }
+
+  public function getAvailableBuildVariables() {
+    return array();
+  }
+
+
+/* -(  PhabricatorSubscribableInterface  )----------------------------------- */
+
+
+  public function isAutomaticallySubscribed($phid) {
+    if ($phid == $this->getAuthorPHID()) {
+      return true;
+    }
+
+    // TODO: This only happens when adding or removing CCs, and is safe from a
+    // policy perspective, but the subscription pathway should have some
+    // opportunity to load this data properly. For now, this is the only case
+    // where implicit subscription is not an intrinsic property of the object.
+    if ($this->reviewerStatus == self::ATTACHABLE) {
+      $reviewers = id(new DifferentialRevisionQuery())
+        ->setViewer(PhabricatorUser::getOmnipotentUser())
+        ->withPHIDs(array($this->getPHID()))
+        ->needReviewerStatus(true)
+        ->executeOne()
+        ->getReviewerStatus();
+    } else {
+      $reviewers = $this->getReviewerStatus();
+    }
+
+    foreach ($reviewers as $reviewer) {
+      if ($reviewer->getReviewerPHID() == $phid) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public function shouldShowSubscribersProperty() {
+    return true;
+  }
+
+  public function shouldAllowSubscription($phid) {
+    return true;
+  }
+
+
+/* -(  PhabricatorCustomFieldInterface  )------------------------------------ */
+
+
+  public function getCustomFieldSpecificationForRole($role) {
+    return PhabricatorEnv::getEnvConfig('differential.fields');
+  }
+
+  public function getCustomFieldBaseClass() {
+    return 'DifferentialCustomField';
+  }
+
+  public function getCustomFields() {
+    return $this->assertAttached($this->customFields);
+  }
+
+  public function attachCustomFields(PhabricatorCustomFieldAttachment $fields) {
+    $this->customFields = $fields;
+    return $this;
+  }
+
+
+/* -(  PhabricatorApplicationTransactionInterface  )------------------------- */
+
+
+  public function getApplicationTransactionEditor() {
+    return new DifferentialTransactionEditor();
+  }
+
+  public function getApplicationTransactionObject() {
+    return $this;
+  }
+
+  public function getApplicationTransactionTemplate() {
+    return new DifferentialTransaction();
+  }
+
+
+/* -(  PhabricatorDestructableInterface  )----------------------------------- */
+
+
+  public function destroyObjectPermanently(
+    PhabricatorDestructionEngine $engine) {
+
+    $this->openTransaction();
+      $diffs = id(new DifferentialDiffQuery())
+        ->setViewer(PhabricatorUser::getOmnipotentUser())
+        ->withRevisionIDs(array($this->getID()))
+        ->execute();
+      foreach ($diffs as $diff) {
+        $engine->destroyObject($diff);
+      }
+
+      $conn_w = $this->establishConnection('w');
+
+      queryfx(
+        $conn_w,
+        'DELETE FROM %T WHERE revisionID = %d',
+        self::TABLE_COMMIT,
+        $this->getID());
+
+      try {
+        $inlines = id(new DifferentialInlineCommentQuery())
+          ->withRevisionIDs(array($this->getID()))
+          ->execute();
+        foreach ($inlines as $inline) {
+          $inline->delete();
+        }
+      } catch (PhabricatorEmptyQueryException $ex) {
+        // TODO: There's still some funky legacy wrapping going on here, and
+        // we might catch a raw query exception.
+      }
+
+      // we have to do paths a little differentally as they do not have
+      // an id or phid column for delete() to act on
+      $dummy_path = new DifferentialAffectedPath();
+      queryfx(
+        $conn_w,
+        'DELETE FROM %T WHERE revisionID = %d',
+        $dummy_path->getTableName(),
+        $this->getID());
+
+      $this->delete();
+    $this->saveTransaction();
   }
 
 }

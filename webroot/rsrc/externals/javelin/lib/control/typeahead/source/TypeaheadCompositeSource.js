@@ -6,9 +6,6 @@
  * @javelin
  */
 
-/**
- * @group control
- */
 JX.install('TypeaheadCompositeSource', {
 
   extend : 'TypeaheadSource',
@@ -50,9 +47,9 @@ JX.install('TypeaheadCompositeSource', {
       }
     },
 
-    childResultsReady : function(nodes) {
+    childResultsReady : function(nodes, value) {
       this.results = this.mergeResults(this.results || [], nodes);
-      this.invoke('resultsready', this.results);
+      this.invoke('resultsready', this.results, value);
     },
 
     childComplete : function() {
@@ -75,4 +72,3 @@ JX.install('TypeaheadCompositeSource', {
     }
   }
 });
-

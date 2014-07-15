@@ -12,6 +12,7 @@ final class PhabricatorDaemonLogListController
 
     $logs = id(new PhabricatorDaemonLogQuery())
       ->setViewer($viewer)
+      ->setAllowStatusWrites(true)
       ->executeWithCursorPager($pager);
 
     $daemon_table = new PhabricatorDaemonLogListView();
@@ -31,7 +32,6 @@ final class PhabricatorDaemonLogListController
       $nav,
       array(
         'title' => pht('All Daemons'),
-        'device' => true,
       ));
   }
 

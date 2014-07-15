@@ -33,9 +33,7 @@ final class PhabricatorRepositoryPushLog
   protected $repositoryPHID;
   protected $epoch;
   protected $pusherPHID;
-  protected $remoteAddress;
-  protected $remoteProtocol;
-  protected $transactionKey;
+  protected $pushEventPHID;
   protected $refType;
   protected $refNameHash;
   protected $refNameRaw;
@@ -44,10 +42,9 @@ final class PhabricatorRepositoryPushLog
   protected $refNew;
   protected $mergeBase;
   protected $changeFlags;
-  protected $rejectCode;
-  protected $rejectDetails;
 
   private $dangerousChangeDescription = self::ATTACHABLE;
+  private $pushEvent = self::ATTACHABLE;
   private $repository = self::ATTACHABLE;
 
   public static function initializeNewLog(PhabricatorUser $viewer) {
@@ -55,10 +52,25 @@ final class PhabricatorRepositoryPushLog
       ->setPusherPHID($viewer->getPHID());
   }
 
+  public static function getHeraldChangeFlagConditionOptions() {
+    return array(
+      PhabricatorRepositoryPushLog::CHANGEFLAG_ADD =>
+        pht('change creates ref'),
+      PhabricatorRepositoryPushLog::CHANGEFLAG_DELETE =>
+        pht('change deletes ref'),
+      PhabricatorRepositoryPushLog::CHANGEFLAG_REWRITE =>
+        pht('change rewrites ref'),
+      PhabricatorRepositoryPushLog::CHANGEFLAG_DANGEROUS =>
+        pht('dangerous change'));
+  }
+
   public function getConfiguration() {
     return array(
       self::CONFIG_AUX_PHID => true,
       self::CONFIG_TIMESTAMPS => false,
+      self::CONFIG_BINARY => array(
+        'refNameRaw' => true,
+      ),
     ) + parent::getConfiguration();
   }
 
@@ -67,28 +79,25 @@ final class PhabricatorRepositoryPushLog
       PhabricatorRepositoryPHIDTypePushLog::TYPECONST);
   }
 
-  public function attachRepository(PhabricatorRepository $repository) {
-    $this->repository = $repository;
+  public function attachPushEvent(PhabricatorRepositoryPushEvent $push_event) {
+    $this->pushEvent = $push_event;
     return $this;
   }
 
-  public function getRepository() {
-    return $this->assertAttached($this->repository);
+  public function getPushEvent() {
+    return $this->assertAttached($this->pushEvent);
   }
 
   public function getRefName() {
-    if ($this->getRefNameEncoding() == 'utf8') {
-      return $this->getRefNameRaw();
-    }
-    return phutil_utf8ize($this->getRefNameRaw());
+    return $this->getUTF8StringFromStorage(
+      $this->getRefNameRaw(),
+      $this->getRefNameEncoding());
   }
 
   public function setRefName($ref_raw) {
-    $encoding = phutil_is_utf8($ref_raw) ? 'utf8' : null;
-
     $this->setRefNameRaw($ref_raw);
     $this->setRefNameHash(PhabricatorHash::digestForIndex($ref_raw));
-    $this->setRefNameEncoding($encoding);
+    $this->setRefNameEncoding($this->detectEncodingForStorage($ref_raw));
 
     return $this;
   }
@@ -120,6 +129,21 @@ final class PhabricatorRepositoryPushLog
     return $this->assertAttached($this->dangerousChangeDescription);
   }
 
+  public function attachRepository(PhabricatorRepository $repository) {
+    // NOTE: Some gymnastics around this because of object construction order
+    // in the hook engine. Particularly, web build the logs before we build
+    // their push event.
+    $this->repository = $repository;
+    return $this;
+  }
+
+  public function getRepository() {
+    if ($this->repository == self::ATTACHABLE) {
+      return $this->getPushEvent()->getRepository();
+    }
+    return $this->assertAttached($this->repository);
+  }
+
 
 /* -(  PhabricatorPolicyInterface  )----------------------------------------- */
 
@@ -131,6 +155,9 @@ final class PhabricatorRepositoryPushLog
   }
 
   public function getPolicy($capability) {
+    // NOTE: We're passing through the repository rather than the push event
+    // mostly because we need to do policy checks in Herald before we create
+    // the event. The two approaches are equivalent in practice.
     return $this->getRepository()->getPolicy($capability);
   }
 

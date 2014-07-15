@@ -93,7 +93,7 @@
  *
  *   $dog = id(new Dog())->load($id);
  *
- * This will load the Dog record with ID $id into $dog, or ##null## if no such
+ * This will load the Dog record with ID $id into $dog, or `null` if no such
  * record exists (@{method:load} is an instance method rather than a static
  * method because PHP does not support late static binding, at least until PHP
  * 5.3).
@@ -161,8 +161,6 @@
  * @task   util    Utilities
  * @task   xaction Managing Transactions
  * @task   isolate Isolation for Unit Testing
- *
- * @group storage
  */
 abstract class LiskDAO {
 
@@ -171,6 +169,7 @@ abstract class LiskDAO {
   const CONFIG_AUX_PHID             = 'auxiliary-phid';
   const CONFIG_SERIALIZATION        = 'col-serialization';
   const CONFIG_PARTIAL_OBJECTS      = 'partial-objects';
+  const CONFIG_BINARY               = 'binary';
 
   const SERIALIZATION_NONE          = 'id';
   const SERIALIZATION_JSON          = 'json';
@@ -182,12 +181,12 @@ abstract class LiskDAO {
 
   const COUNTER_TABLE_NAME          = 'lisk_counter';
 
-  private $__dirtyFields            = array();
-  private $__missingFields          = array();
-  private static $processIsolationLevel       = 0;
-  private static $transactionIsolationLevel   = 0;
+  private $dirtyFields                      = array();
+  private $missingFields                    = array();
+  private static $processIsolationLevel     = 0;
+  private static $transactionIsolationLevel = 0;
 
-  private $__ephemeral = false;
+  private $ephemeral = false;
 
   private static $connections       = array();
 
@@ -356,6 +355,11 @@ abstract class LiskDAO {
    * directly access or assign protected members of your class (use the getters
    * and setters).
    *
+   * CONFIG_BINARY
+   * You can optionally provide a map of columns to a flag indicating that
+   * they store binary data. These columns will not raise an error when
+   * handling binary writes.
+   *
    * @return dictionary  Map of configuration options to values.
    *
    * @task   config
@@ -458,7 +462,7 @@ abstract class LiskDAO {
    *
    * @task   load
    */
-  public function loadAllWhere($pattern/* , $arg, $arg, $arg ... */) {
+  public function loadAllWhere($pattern /* , $arg, $arg, $arg ... */) {
     $args = func_get_args();
     array_unshift($args, null);
     $data = call_user_func_array(
@@ -478,10 +482,10 @@ abstract class LiskDAO {
    *
    * @task   load
    */
-  public function loadColumnsWhere(array $columns, $pattern/* , $args... */) {
+  public function loadColumnsWhere(array $columns, $pattern /* , $args... */) {
     if (!$this->getConfigOption(self::CONFIG_PARTIAL_OBJECTS)) {
       throw new BadMethodCallException(
-        "This class does not support partial objects.");
+        'This class does not support partial objects.');
     }
     $args = func_get_args();
     $data = call_user_func_array(
@@ -493,7 +497,7 @@ abstract class LiskDAO {
 
   /**
    * Load a single object identified by a 'WHERE' clause. You provide
-   * everything  after the 'WHERE', and Lisk builds the first half of the
+   * everything after the 'WHERE', and Lisk builds the first half of the
    * query. See loadAllWhere(). This method is similar, but returns a single
    * result instead of a list.
    *
@@ -503,7 +507,7 @@ abstract class LiskDAO {
    *
    * @task   load
    */
-  public function loadOneWhere($pattern/* , $arg, $arg, $arg ... */) {
+  public function loadOneWhere($pattern /* , $arg, $arg, $arg ... */) {
     $args = func_get_args();
     array_unshift($args, null);
     $data = call_user_func_array(
@@ -512,7 +516,7 @@ abstract class LiskDAO {
 
     if (count($data) > 1) {
       throw new AphrontQueryCountException(
-        "More than 1 result from loadOneWhere()!");
+        'More than 1 result from loadOneWhere()!');
     }
 
     $data = reset($data);
@@ -524,7 +528,7 @@ abstract class LiskDAO {
   }
 
 
-  protected function loadRawDataWhere($columns, $pattern/* , $args... */) {
+  protected function loadRawDataWhere($columns, $pattern /* , $args... */) {
     $connection = $this->establishConnection('r');
 
     $lock_clause = '';
@@ -544,7 +548,7 @@ abstract class LiskDAO {
       $columns[] = $this->getIDKey();
 
       $properties = $this->getProperties();
-      $this->__missingFields = array_diff_key(
+      $this->missingFields = array_diff_key(
         array_flip($properties),
         array_flip($columns));
     }
@@ -573,7 +577,6 @@ abstract class LiskDAO {
    * @task   load
    */
   public function reload() {
-
     if (!$this->getID()) {
       throw new Exception("Unable to reload object that hasn't been loaded!");
     }
@@ -595,10 +598,11 @@ abstract class LiskDAO {
    * Initialize this object's properties from a dictionary. Generally, you
    * load single objects with loadOneWhere(), but sometimes it may be more
    * convenient to pull data from elsewhere directly (e.g., a complicated
-   * join via queryData()) and then load from an array representation.
+   * join via @{method:queryData}) and then load from an array representation.
    *
    * @param  dict  Dictionary of properties, which should be equivalent to
-   *               selecting a row from the table or calling getProperties().
+   *               selecting a row from the table or calling
+   *               @{method:getProperties}.
    * @return this
    *
    * @task   load
@@ -648,9 +652,9 @@ abstract class LiskDAO {
 
   /**
    * Initialize a list of objects from a list of dictionaries. Usually you
-   * load lists of objects with loadAllWhere(), but sometimes that isn't
-   * flexible enough. One case is if you need to do joins to select the right
-   * objects:
+   * load lists of objects with @{method:loadAllWhere}, but sometimes that
+   * isn't flexible enough. One case is if you need to do joins to select the
+   * right objects:
    *
    *   function loadAllWithOwner($owner) {
    *     $data = $this->queryData(
@@ -663,7 +667,7 @@ abstract class LiskDAO {
    *     return $this->loadAllFromArray($data);
    *   }
    *
-   * This is a lot messier than loadAllWhere(), but more flexible.
+   * This is a lot messier than @{method:loadAllWhere}, but more flexible.
    *
    * @param  list  List of property dictionaries.
    * @return dict  List of constructed objects, keyed on ID.
@@ -775,7 +779,7 @@ abstract class LiskDAO {
    * row in retrieving other rows. Example of a correct usage:
    *
    *   $status = $author->loadOneRelative(
-   *     new PhabricatorUserStatus(),
+   *     new PhabricatorCalendarEvent(),
    *     'userPHID',
    *     'getPHID',
    *     '(UNIX_TIMESTAMP() BETWEEN dateFrom AND dateTo)');
@@ -838,7 +842,7 @@ abstract class LiskDAO {
 
     if (count($relatives) > 1) {
       throw new AphrontQueryCountException(
-        "More than 1 result from loadOneRelative()!");
+        'More than 1 result from loadOneRelative()!');
     }
 
     return reset($relatives);
@@ -1038,9 +1042,9 @@ abstract class LiskDAO {
 
   /**
    * Convert this object into a property dictionary. This dictionary can be
-   * restored into an object by using loadFromArray() (unless you're using
-   * legacy features with CONFIG_CONVERT_CAMELCASE, but in that case you should
-   * just go ahead and die in a fire).
+   * restored into an object by using @{method:loadFromArray} (unless you're
+   * using legacy features with CONFIG_CONVERT_CAMELCASE, but in that case you
+   * should just go ahead and die in a fire).
    *
    * @return dict  Dictionary of object properties.
    *
@@ -1068,12 +1072,12 @@ abstract class LiskDAO {
    * storage.
    */
   public function makeEphemeral() {
-    $this->__ephemeral = true;
+    $this->ephemeral = true;
     return $this;
   }
 
   private function isEphemeralCheck() {
-    if ($this->__ephemeral) {
+    if ($this->ephemeral) {
       throw new LiskEphemeralObjectException();
     }
   }
@@ -1138,7 +1142,7 @@ abstract class LiskDAO {
     $this->willSaveObject();
     $data = $this->getPropertyValues();
     if ($this->getConfigOption(self::CONFIG_PARTIAL_OBJECTS)) {
-      $data = array_intersect_key($data, $this->__dirtyFields);
+      $data = array_intersect_key($data, $this->dirtyFields);
     }
     $this->willWriteData($data);
 
@@ -1148,9 +1152,14 @@ abstract class LiskDAO {
     }
 
     $conn = $this->establishConnection('w');
+    $binary = $this->getBinaryColumns();
 
     foreach ($map as $key => $value) {
-      $map[$key] = qsprintf($conn, '%C = %ns', $key, $value);
+      if (!empty($binary[$key])) {
+        $map[$key] = qsprintf($conn, '%C = %nB', $key, $value);
+      } else {
+        $map[$key] = qsprintf($conn, '%C = %ns', $key, $value);
+      }
     }
     $map = implode(', ', $map);
 
@@ -1242,10 +1251,15 @@ abstract class LiskDAO {
     $this->willWriteData($data);
 
     $columns = array_keys($data);
+    $binary = $this->getBinaryColumns();
 
     foreach ($data as $key => $value) {
       try {
-        $data[$key] = qsprintf($conn, '%ns', $value);
+        if (!empty($binary[$key])) {
+          $data[$key] = qsprintf($conn, '%nB', $value);
+        } else {
+          $data[$key] = qsprintf($conn, '%ns', $value);
+        }
       } catch (AphrontQueryParameterException $parameter_exception) {
         throw new PhutilProxyException(
           pht(
@@ -1331,8 +1345,8 @@ abstract class LiskDAO {
     $id_key = $this->getIDKey();
     if (!$id_key) {
       throw new Exception(
-        "This DAO does not have a single-part primary key. The method you ".
-        "called requires a single-part primary key.");
+        'This DAO does not have a single-part primary key. The method you '.
+        'called requires a single-part primary key.');
     }
     return $id_key;
   }
@@ -1347,14 +1361,14 @@ abstract class LiskDAO {
    */
   protected function generatePHID() {
     throw new Exception(
-      "To use CONFIG_AUX_PHID, you need to overload ".
-      "generatePHID() to perform PHID generation.");
+      'To use CONFIG_AUX_PHID, you need to overload '.
+      'generatePHID() to perform PHID generation.');
   }
 
 
   /**
    * Hook to apply serialization or validation to data before it is written to
-   * the database. See also willReadData().
+   * the database. See also @{method:willReadData}.
    *
    * @task hook
    */
@@ -1395,7 +1409,7 @@ abstract class LiskDAO {
 
   /**
    * Hook to apply serialization or validation to data as it is read from the
-   * database. See also willWriteData().
+   * database. See also @{method:willWriteData}.
    *
    * @task hook
    */
@@ -1426,7 +1440,7 @@ abstract class LiskDAO {
 
   /**
    * Reads the value from a field. Override this method for custom behavior
-   * of getField() instead of overriding getField directly.
+   * of @{method:getField} instead of overriding getField directly.
    *
    * @param  string  Canonical field name
    * @return mixed   Value of the field
@@ -1572,7 +1586,7 @@ abstract class LiskDAO {
     self::$processIsolationLevel--;
     if (self::$processIsolationLevel < 0) {
       throw new Exception(
-        "Lisk process isolation level was reduced below 0.");
+        'Lisk process isolation level was reduced below 0.');
     }
   }
 
@@ -1608,7 +1622,7 @@ abstract class LiskDAO {
     self::$transactionIsolationLevel--;
     if (self::$transactionIsolationLevel < 0) {
       throw new Exception(
-        "Lisk transaction isolation level was reduced below 0.");
+        'Lisk transaction isolation level was reduced below 0.');
     } else if (self::$transactionIsolationLevel == 0) {
       foreach (self::$connections as $key => $conn) {
         if ($conn) {
@@ -1674,9 +1688,9 @@ abstract class LiskDAO {
    * @task util
    */
   private function resetDirtyFields() {
-    $this->__dirtyFields = array();
+    $this->dirtyFields = array();
     if ($this->getConfigOption(self::CONFIG_TIMESTAMPS)) {
-      $this->__dirtyFields['dateModified'] = true;
+      $this->dirtyFields['dateModified'] = true;
     }
   }
 
@@ -1690,7 +1704,6 @@ abstract class LiskDAO {
    * @task   util
    */
   public function __call($method, $args) {
-
     // NOTE: PHP has a bug that static variables defined in __call() are shared
     // across all children classes. Call a different method to work around this
     // bug.
@@ -1725,7 +1738,7 @@ abstract class LiskDAO {
         $dispatch_map[$method] = $property;
       }
 
-      if ($partial && isset($this->__missingFields[$property])) {
+      if ($partial && isset($this->missingFields[$property])) {
         throw new Exception("Cannot get field that wasn't loaded: {$property}");
       }
 
@@ -1748,8 +1761,8 @@ abstract class LiskDAO {
       }
       if ($partial) {
         // Accept writes to fields that weren't initially loaded
-        unset($this->__missingFields[$property]);
-        $this->__dirtyFields[$property] = true;
+        unset($this->missingFields[$property]);
+        $this->dirtyFields[$property] = true;
       }
 
       $this->writeField($property, $args[0]);
@@ -1801,6 +1814,10 @@ abstract class LiskDAO {
       $counter_name);
 
     return $conn_w->getInsertID();
+  }
+
+  private function getBinaryColumns() {
+    return $this->getConfigOption(self::CONFIG_BINARY);
   }
 
 }

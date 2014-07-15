@@ -43,6 +43,7 @@ final class PhabricatorNotificationListController
 
     if ($notifications) {
       $builder = new PhabricatorNotificationBuilder($notifications);
+      $builder->setUser($user);
       $view = $builder->buildView()->render();
     } else {
       $view = phutil_tag_div(
@@ -56,8 +57,7 @@ final class PhabricatorNotificationListController
       ->appendChild($view);
 
     $image = id(new PHUIIconView())
-        ->setSpriteSheet(PHUIIconView::SPRITE_ICONS)
-        ->setSpriteIcon('preview');
+        ->setIconFont('fa-eye-slash');
     $button = id(new PHUIButtonView())
         ->setTag('a')
         ->setColor(PHUIButtonView::SIMPLE)
@@ -81,7 +81,6 @@ final class PhabricatorNotificationListController
       $nav,
       array(
         'title' => pht('Notifications'),
-        'device' => true,
       ));
   }
 

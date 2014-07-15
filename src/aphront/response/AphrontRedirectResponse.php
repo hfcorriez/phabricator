@@ -2,8 +2,6 @@
 
 /**
  * TODO: Should be final but isn't because of AphrontReloadResponse.
- *
- * @group aphront
  */
 class AphrontRedirectResponse extends AphrontResponse {
 
@@ -41,16 +39,17 @@ class AphrontRedirectResponse extends AphrontResponse {
 
   public function buildResponseString() {
     if ($this->shouldStopForDebugging()) {
-      $user = new PhabricatorUser();
+      $request = $this->getRequest();
+      $viewer = $request->getUser();
 
       $view = new PhabricatorStandardPageView();
       $view->setRequest($this->getRequest());
-      $view->setApplicationName('Debug');
-      $view->setTitle('Stopped on Redirect');
+      $view->setApplicationName(pht('Debug'));
+      $view->setTitle(pht('Stopped on Redirect'));
 
       $dialog = new AphrontDialogView();
-      $dialog->setUser($user);
-      $dialog->setTitle('Stopped on Redirect');
+      $dialog->setUser($viewer);
+      $dialog->setTitle(pht('Stopped on Redirect'));
 
       $dialog->appendParagraph(
         pht(
@@ -68,7 +67,7 @@ class AphrontRedirectResponse extends AphrontResponse {
 
       $dialog->appendChild(
         id(new AphrontStackTraceView())
-          ->setUser($user)
+          ->setUser($viewer)
           ->setTrace($this->stackWhenCreated));
 
       $dialog->setIsStandalone(true);

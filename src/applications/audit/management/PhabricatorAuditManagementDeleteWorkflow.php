@@ -65,77 +65,80 @@ final class PhabricatorAuditManagementDeleteWorkflow
 
     $status = $args->getArg('status');
     if (!$status) {
-      $status = PhabricatorAuditQuery::STATUS_OPEN;
+      $status = DiffusionCommitQuery::AUDIT_STATUS_OPEN;
     }
 
     $min_date = $this->loadDate($args->getArg('min-commit-date'));
     $max_date = $this->loadDate($args->getArg('max-commit-date'));
     if ($min_date && $max_date && ($min_date > $max_date)) {
       throw new PhutilArgumentUsageException(
-        "Specified max date must come after specified min date.");
+        'Specified max date must come after specified min date.');
     }
 
     $is_dry_run = $args->getArg('dry-run');
 
-    $query = id(new PhabricatorAuditQuery())
-      ->needCommits(true);
+    $query = id(new DiffusionCommitQuery())
+      ->setViewer($this->getViewer())
+      ->needAuditRequests(true);
 
     if ($status) {
-      $query->withStatus($status);
+      $query->withAuditStatus($status);
     }
 
+    $id_map = array();
     if ($ids) {
-      $query->withIDs($ids);
+      $id_map = array_fuse($ids);
+      $query->withAuditIDs($ids);
     }
 
     if ($repos) {
-      $query->withRepositoryPHIDs(mpull($repos, 'getPHID'));
+      $query->withRepositoryIDs(mpull($repos, 'getID'));
     }
 
+    $auditor_map = array();
     if ($users) {
-      $query->withAuditorPHIDs(mpull($users, 'getPHID'));
+      $auditor_map = array_fuse(mpull($users, 'getPHID'));
+      $query->withAuditorPHIDs($auditor_map);
     }
 
     if ($commits) {
-      $query->withCommitPHIDs(mpull($commits, 'getPHID'));
+      $query->withPHIDs(mpull($commits, 'getPHID'));
     }
 
-    $audits = $query->execute();
-    $commits = $query->getCommits();
+    $commits = $query->execute();
+    $commits = mpull($commits, null, 'getPHID');
+    $audits = array();
+    foreach ($commits as $commit) {
+      $commit_audits = $commit->getAudits();
+      foreach ($commit_audits as $key => $audit) {
+        if ($id_map && empty($id_map[$audit->getID()])) {
+          unset($commit_audits[$key]);
+          continue;
+        }
 
-    if ($commits) {
-      // TODO: AuditQuery is currently not policy-aware and uses an old query
-      // to load commits. Load them in the modern way to get repositories.
-      // Remove this after modernizing PhabricatorAuditQuery.
-      $commits = id(new DiffusionCommitQuery())
-        ->setViewer($viewer)
-        ->withPHIDs(mpull($commits, 'getPHID'))
-        ->execute();
-      $commits = mpull($commits, null, 'getPHID');
+        if ($auditor_map && empty($auditor_map[$audit->getAuditorPHID()])) {
+          unset($commit_audits[$key]);
+          continue;
+        }
+
+        if ($min_date && $commit->getEpoch() < $min_date) {
+          unset($commit_audits[$key]);
+          continue;
+        }
+
+        if ($max_date && $commit->getEpoch() > $max_date) {
+          unset($commit_audits[$key]);
+          continue;
+        }
+      }
+      $audits[] = $commit_audits;
     }
-
-    foreach ($audits as $key => $audit) {
-      $commit = idx($commits, $audit->getCommitPHID());
-      if (!$commit) {
-        unset($audits[$key]);
-        continue;
-      }
-
-      if ($min_date && $commit->getEpoch() < $min_date) {
-        unset($audits[$key]);
-        continue;
-      }
-
-      if ($max_date && $commit->getEpoch() > $max_date) {
-        unset($audits[$key]);
-        continue;
-      }
-    }
+    $audits = array_mergev($audits);
 
     $console = PhutilConsole::getConsole();
 
     if (!$audits) {
-      $console->writeErr("%s\n", pht("No audits match the query."));
+      $console->writeErr("%s\n", pht('No audits match the query.'));
       return 0;
     }
 
@@ -146,12 +149,12 @@ final class PhabricatorAuditManagementDeleteWorkflow
 
 
     foreach ($audits as $audit) {
-      $commit = idx($commits, $audit->getCommitPHID());
+      $commit = $commits[$audit->getCommitPHID()];
 
       $console->writeOut(
         "%s\n",
         sprintf(
-          "%10d %-16s %-16s %s: %s",
+          '%10d %-16s %-16s %s: %s',
           $audit->getID(),
           $handles[$audit->getAuditorPHID()]->getName(),
           PhabricatorAuditStatusConstants::getStatusName(
@@ -169,7 +172,7 @@ final class PhabricatorAuditManagementDeleteWorkflow
       if ($console->confirm($message)) {
         foreach ($audits as $audit) {
           $id = $audit->getID();
-          $console->writeOut("%s\n", pht("Deleting audit %d...", $id));
+          $console->writeOut("%s\n", pht('Deleting audit %d...', $id));
           $audit->delete();
         }
       }

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group console
- */
 final class DarkConsoleCore {
 
   private $plugins = array();
@@ -74,9 +71,18 @@ final class DarkConsoleCore {
     $cache = new PhutilKeyValueCacheProfiler($cache);
     $cache->setProfiler(PhutilServiceProfiler::getInstance());
 
+    // This encoding may fail if there are, e.g., database queries which
+    // include binary data. It would be a little cleaner to try to strip these,
+    // but just do something non-broken here if we end up with unrepresentable
+    // data.
+    $json = @json_encode($storage);
+    if (!$json) {
+      $json = '{}';
+    }
+
     $cache->setKeys(
       array(
-        'darkconsole:'.$key => json_encode($storage),
+        'darkconsole:'.$key => $json,
       ),
       $ttl = (60 * 60 * 6));
 
@@ -126,4 +132,3 @@ final class DarkConsoleCore {
   }
 
 }
-

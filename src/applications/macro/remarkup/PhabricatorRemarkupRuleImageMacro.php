@@ -1,10 +1,6 @@
 <?php
 
-/**
- * @group markup
- */
-final class PhabricatorRemarkupRuleImageMacro
-  extends PhutilRemarkupRule {
+final class PhabricatorRemarkupRuleImageMacro extends PhutilRemarkupRule {
 
   private $macros;
 
@@ -12,7 +8,7 @@ final class PhabricatorRemarkupRuleImageMacro
 
   public function apply($text) {
     return preg_replace_callback(
-      '@^([a-zA-Z0-9:_\-]+)$@m',
+      '@^\s*([a-zA-Z0-9:_\-]+)$@m',
       array($this, 'markupImageMacro'),
       $text);
   }
@@ -147,7 +143,7 @@ final class PhabricatorRemarkupRuleImageMacro
           ));
       }
 
-      $result = phutil_tag(
+      $result = $this->newTag(
         'img',
         array(
           'id'    => $id,

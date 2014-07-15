@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conduit
- */
 final class PhabricatorConduitAPIController
   extends PhabricatorConduitController {
 
@@ -167,8 +164,13 @@ final class PhabricatorConduitAPIController
     ConduitAPIRequest $api_request,
     $user_name) {
 
+    $config_key = 'security.allow-conduit-act-as-user';
+    if (!PhabricatorEnv::getEnvConfig($config_key)) {
+      throw new Exception('security.allow-conduit-act-as-user is disabled');
+    }
+
     if (!$api_request->getUser()->getIsAdmin()) {
-      throw new Exception("Only administrators can use actAsUser");
+      throw new Exception('Only administrators can use actAsUser');
     }
 
     $user = id(new PhabricatorUser())->loadOneWhere(
@@ -279,28 +281,13 @@ final class PhabricatorConduitAPIController
       );
     }
 
-    $session = queryfx_one(
-      id(new PhabricatorUser())->establishConnection('r'),
-      'SELECT * FROM %T WHERE sessionKey = %s',
-      PhabricatorUser::SESSION_TABLE,
-      PhabricatorHash::digest($session_key));
-    if (!$session) {
-      return array(
-        'ERR-INVALID-SESSION',
-        'Session key is invalid.',
-      );
-    }
+    $user = id(new PhabricatorAuthSessionEngine())
+      ->loadUserForSession(PhabricatorAuthSession::TYPE_CONDUIT, $session_key);
 
-    // TODO: Make sessions timeout.
-    // TODO: When we pull a session, read connectionID from the session table.
-
-    $user = id(new PhabricatorUser())->loadOneWhere(
-      'phid = %s',
-      $session['userPHID']);
     if (!$user) {
       return array(
         'ERR-INVALID-SESSION',
-        'Session is for nonexistent user.',
+        'Session key is invalid.',
       );
     }
 
@@ -394,7 +381,6 @@ final class PhabricatorConduitAPIController
       ),
       array(
         'title' => 'Method Call Result',
-        'device' => true,
       ));
   }
 
@@ -483,4 +469,5 @@ final class PhabricatorConduitAPIController
 
     return $params;
   }
+
 }

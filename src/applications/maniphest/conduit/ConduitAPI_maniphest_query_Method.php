@@ -1,22 +1,17 @@
 <?php
 
 /**
- * @group conduit
- *
  * TODO: Remove maniphest.find, then make this final.
  *
  * @concrete-extensible
  */
-class ConduitAPI_maniphest_query_Method
-  extends ConduitAPI_maniphest_Method {
-
+class ConduitAPI_maniphest_query_Method extends ConduitAPI_maniphest_Method {
 
   public function getMethodDescription() {
-    return "Execute complex searches for Maniphest tasks.";
+    return 'Execute complex searches for Maniphest tasks.';
   }
 
   public function defineParamTypes() {
-
     $statuses = array(
       ManiphestTaskQuery::STATUS_ANY,
       ManiphestTaskQuery::STATUS_OPEN,
@@ -27,14 +22,14 @@ class ConduitAPI_maniphest_query_Method
       ManiphestTaskQuery::STATUS_SPITE,
       ManiphestTaskQuery::STATUS_DUPLICATE,
     );
-    $statuses = implode(', ', $statuses);
+    $status_const = $this->formatStringConstants($statuses);
 
     $orders = array(
       ManiphestTaskQuery::ORDER_PRIORITY,
       ManiphestTaskQuery::ORDER_CREATED,
       ManiphestTaskQuery::ORDER_MODIFIED,
     );
-    $orders = implode(', ', $orders);
+    $order_const = $this->formatStringConstants($orders);
 
     return array(
       'ids'               => 'optional list<uint>',
@@ -45,8 +40,8 @@ class ConduitAPI_maniphest_query_Method
       'ccPHIDs'           => 'optional list<phid>',
       'fullText'          => 'optional string',
 
-      'status'            => 'optional enum<'.$statuses.'>',
-      'order'             => 'optional enum<'.$orders.'>',
+      'status'            => 'optional '.$status_const,
+      'order'             => 'optional '.$order_const,
 
       'limit'             => 'optional int',
       'offset'            => 'optional int',
@@ -58,8 +53,7 @@ class ConduitAPI_maniphest_query_Method
   }
 
   public function defineErrorTypes() {
-    return array(
-    );
+    return array();
   }
 
   protected function execute(ConduitAPIRequest $request) {

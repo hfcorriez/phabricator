@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group aphront
- */
 final class AphrontPlainTextResponse extends AphrontResponse {
 
   public function setContent($content) {
@@ -16,7 +13,7 @@ final class AphrontPlainTextResponse extends AphrontResponse {
 
   public function getHeaders() {
     $headers = array(
-      array('Content-Type', 'text/plain'),
+      array('Content-Type', 'text/plain; charset=utf-8'),
     );
 
     return array_merge(parent::getHeaders(), $headers);

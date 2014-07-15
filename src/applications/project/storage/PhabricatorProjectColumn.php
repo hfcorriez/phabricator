@@ -2,13 +2,24 @@
 
 final class PhabricatorProjectColumn
   extends PhabricatorProjectDAO
-  implements PhabricatorPolicyInterface {
+  implements PhabricatorPolicyInterface,
+  PhabricatorDestructableInterface {
+
+  const STATUS_ACTIVE = 0;
+  const STATUS_HIDDEN = 1;
 
   protected $name;
+  protected $status;
   protected $projectPHID;
   protected $sequence;
 
   private $project = self::ATTACHABLE;
+
+  public static function initializeNewColumn(PhabricatorUser $user) {
+    return id(new PhabricatorProjectColumn())
+      ->setName('')
+      ->setStatus(self::STATUS_ACTIVE);
+  }
 
   public function getConfiguration() {
     return array(
@@ -28,6 +39,38 @@ final class PhabricatorProjectColumn
 
   public function getProject() {
     return $this->assertAttached($this->project);
+  }
+
+  public function isDefaultColumn() {
+    return ($this->getSequence() == 0);
+  }
+
+  public function isHidden() {
+    return ($this->getStatus() == self::STATUS_HIDDEN);
+  }
+
+  public function getDisplayName() {
+    $name = $this->getName();
+    if (strlen($name)) {
+      return $name;
+    }
+
+    if ($this->isDefaultColumn()) {
+      return pht('Backlog');
+    }
+
+    return pht('Unnamed Column');
+  }
+
+  public function getHeaderColor() {
+    if ($this->isHidden()) {
+      return PHUIActionHeaderView::HEADER_LIGHTRED;
+    }
+
+    if ($this->isDefaultColumn()) {
+      return PHUIActionHeaderView::HEADER_DARK_GREY;
+    }
+    return PHUIActionHeaderView::HEADER_GREY;
   }
 
 
@@ -53,6 +96,17 @@ final class PhabricatorProjectColumn
 
   public function describeAutomaticCapability($capability) {
     return pht('Users must be able to see a project to see its board.');
+  }
+
+
+/* -(  PhabricatorDestructableInterface  )----------------------------------- */
+
+  public function destroyObjectPermanently(
+    PhabricatorDestructionEngine $engine) {
+
+    $this->openTransaction();
+    $this->delete();
+    $this->saveTransaction();
   }
 
 }

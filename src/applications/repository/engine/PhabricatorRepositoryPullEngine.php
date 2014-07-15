@@ -171,7 +171,7 @@ final class PhabricatorRepositoryPullEngine
       $bin,
       $callsign);
 
-    $hook = "#!/bin/sh\n{$cmd}\n";
+    $hook = "#!/bin/sh\nexport TERM=dumb\n{$cmd}\n";
 
     Filesystem::writeFile($path, $hook);
     Filesystem::changePermissions($path, 0755);
@@ -303,10 +303,10 @@ final class PhabricatorRepositoryPullEngine
         // Fix remote origin url if it doesn't match our configuration
         $origin_url = $repository->execLocalCommand(
           'config --get remote.origin.url');
-        $remote_uri = $repository->getDetail('remote-uri');
-        if ($origin_url != $remote_uri) {
+        $remote_uri = $repository->getRemoteURIEnvelope();
+        if ($origin_url != $remote_uri->openEnvelope()) {
           $repository->execLocalCommand(
-            'remote set-url origin %s',
+            'remote set-url origin %P',
             $remote_uri);
         }
       } else if ($err) {
@@ -384,7 +384,7 @@ final class PhabricatorRepositoryPullEngine
       // This behavior has been reverted, but users who updated between Feb 1,
       // 2012 and Mar 1, 2012 will have the erroring version. Do a dumb test
       // against stdout to check for this possibility.
-      // See: https://github.com/facebook/phabricator/issues/101/
+      // See: https://github.com/phacility/phabricator/issues/101/
 
       // NOTE: Mercurial has translated versions, which translate this error
       // string. In a translated version, the string will be something else,

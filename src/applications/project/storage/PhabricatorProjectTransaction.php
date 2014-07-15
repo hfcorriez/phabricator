@@ -4,8 +4,14 @@ final class PhabricatorProjectTransaction
   extends PhabricatorApplicationTransaction {
 
   const TYPE_NAME       = 'project:name';
-  const TYPE_MEMBERS    = 'project:members';
+  const TYPE_SLUGS      = 'project:slugs';
   const TYPE_STATUS     = 'project:status';
+  const TYPE_IMAGE      = 'project:image';
+  const TYPE_ICON       = 'project:icon';
+  const TYPE_COLOR      = 'project:color';
+
+  // NOTE: This is deprecated, members are just a normal edge now.
+  const TYPE_MEMBERS    = 'project:members';
 
   public function getApplicationName() {
     return 'project';
@@ -25,6 +31,10 @@ final class PhabricatorProjectTransaction
         $add = array_diff($new, $old);
         $rem = array_diff($old, $new);
         $req_phids = array_merge($add, $rem);
+        break;
+      case PhabricatorProjectTransaction::TYPE_IMAGE:
+        $req_phids[] = $old;
+        $req_phids[] = $new;
         break;
     }
 
@@ -59,6 +69,63 @@ final class PhabricatorProjectTransaction
             '%s reopened this project.',
             $author_handle);
         }
+      case PhabricatorProjectTransaction::TYPE_IMAGE:
+        // TODO: Some day, it would be nice to show the images.
+        if (!$old) {
+          return pht(
+            '%s set this project\'s image to %s.',
+            $author_handle,
+            $this->renderHandleLink($new));
+        } else if (!$new) {
+          return pht(
+            '%s removed this project\'s image.',
+            $author_handle);
+        } else {
+          return pht(
+            '%s updated this project\'s image from %s to %s.',
+            $author_handle,
+            $this->renderHandleLink($old),
+            $this->renderHandleLink($new));
+        }
+
+      case PhabricatorProjectTransaction::TYPE_ICON:
+        return pht(
+          '%s set this project\'s icon to %s.',
+          $author_handle,
+          PhabricatorProjectIcon::getLabel($new));
+
+      case PhabricatorProjectTransaction::TYPE_COLOR:
+        return pht(
+          '%s set this project\'s color to %s.',
+          $author_handle,
+          PHUITagView::getShadeName($new));
+
+      case PhabricatorProjectTransaction::TYPE_SLUGS:
+        $add = array_diff($new, $old);
+        $rem = array_diff($old, $new);
+
+        if ($add && $rem) {
+          return pht(
+            '%s changed project hashtag(s), added %d: %s; removed %d: %s',
+            $author_handle,
+            count($add),
+            $this->renderSlugList($add),
+            count($rem),
+            $this->renderSlugList($rem));
+        } else if ($add) {
+          return pht(
+            '%s added %d project hashtag(s): %s',
+            $author_handle,
+            count($add),
+            $this->renderSlugList($add));
+        } else if ($rem) {
+            return pht(
+              '%s removed %d project hashtag(s): %s',
+              $author_handle,
+              count($rem),
+              $this->renderSlugList($rem));
+        }
+
       case PhabricatorProjectTransaction::TYPE_MEMBERS:
         $add = array_diff($new, $old);
         $rem = array_diff($old, $new);
@@ -101,5 +168,8 @@ final class PhabricatorProjectTransaction
     return parent::getTitle();
   }
 
+  private function renderSlugList($slugs) {
+    return implode(', ', $slugs);
+  }
 
 }

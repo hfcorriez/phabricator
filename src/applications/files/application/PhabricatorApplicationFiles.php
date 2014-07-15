@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group file
- */
 final class PhabricatorApplicationFiles extends PhabricatorApplication {
 
   public function getBaseURI() {
@@ -27,10 +24,6 @@ final class PhabricatorApplicationFiles extends PhabricatorApplication {
 
   public function getApplicationGroup() {
     return self::GROUP_UTILITIES;
-  }
-
-  public function getQuickCreateURI() {
-    return $this->getBaseURI().'upload/';
   }
 
   public function canUninstall() {

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_diffusion_getlintmessages_Method
   extends ConduitAPI_diffusion_Method {
 
@@ -11,7 +8,7 @@ final class ConduitAPI_diffusion_getlintmessages_Method
   }
 
   public function getMethodDescription() {
-    return "Get lint messages for existing code.";
+    return 'Get lint messages for existing code.';
   }
 
   public function defineParamTypes() {
@@ -28,8 +25,7 @@ final class ConduitAPI_diffusion_getlintmessages_Method
   }
 
   public function defineErrorTypes() {
-    return array(
-    );
+    return array();
   }
 
   protected function execute(ConduitAPIRequest $request) {

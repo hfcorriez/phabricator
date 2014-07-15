@@ -60,7 +60,7 @@ final class HeraldTranscriptController extends HeraldController {
         // table, and then filter this earlier (and thus raise a better error).
         // For now, just block access so we don't violate policies.
         throw new Exception(
-          pht("This transcript has an invalid or inaccessible adapter."));
+          pht('This transcript has an invalid or inaccessible adapter.'));
       }
 
       $this->adapter = HeraldAdapter::getAdapterForContentType($object_type);
@@ -82,6 +82,9 @@ final class HeraldTranscriptController extends HeraldController {
           'rules, no actions were executed.'));
         $nav->appendChild($notice);
       }
+
+      $warning_panel = $this->buildWarningPanel($xscript);
+      $nav->appendChild($warning_panel);
 
       $apply_xscript_panel = $this->buildApplyTranscriptPanel(
         $xscript);
@@ -107,12 +110,19 @@ final class HeraldTranscriptController extends HeraldController {
       $nav,
       array(
         'title' => pht('Transcript'),
-        'device' => true,
       ));
   }
 
   protected function renderConditionTestValue($condition, $handles) {
-    $value = $condition->getTestValue();
+    switch ($condition->getFieldName()) {
+      case HeraldAdapter::FIELD_RULE:
+        $value = array($condition->getTestValue());
+        break;
+      default:
+        $value = $condition->getTestValue();
+        break;
+    }
+
     if (!is_scalar($value) && $value !== null) {
       foreach ($value as $key => $phid) {
         $handle = idx($handles, $phid);
@@ -191,16 +201,23 @@ final class HeraldTranscriptController extends HeraldController {
         $condition_xscripts);
     }
     foreach ($condition_xscripts as $condition_xscript) {
-      $value = $condition_xscript->getTestValue();
-      // TODO: Also total hacks.
-      if (is_array($value)) {
-        foreach ($value as $phid) {
-          if ($phid) { // TODO: Probably need to make sure this "looks like" a
-                       // PHID or decrease the level of hacks here; this used
-                       // to be an is_numeric() check in Facebook land.
-            $phids[] = $phid;
+      switch ($condition_xscript->getFieldName()) {
+        case HeraldAdapter::FIELD_RULE:
+          $phids[] = $condition_xscript->getTestValue();
+          break;
+        default:
+          $value = $condition_xscript->getTestValue();
+          // TODO: Also total hacks.
+          if (is_array($value)) {
+            foreach ($value as $phid) {
+              if ($phid) { // TODO: Probably need to make sure this
+                // "looks like" a PHID or decrease the level of hacks here;
+                // this used to be an is_numeric() check in Facebook land.
+                $phids[] = $phid;
+              }
+            }
           }
-        }
+          break;
       }
     }
 
@@ -272,20 +289,62 @@ final class HeraldTranscriptController extends HeraldController {
         $keep_rule_xscripts));
   }
 
-  private function buildApplyTranscriptPanel($xscript) {
+  private function buildWarningPanel(HeraldTranscript $xscript) {
+    $request = $this->getRequest();
+    $panel = null;
+    if ($xscript->getObjectTranscript()) {
+      $handles = $this->handles;
+      $object_xscript = $xscript->getObjectTranscript();
+      $handle = $handles[$object_xscript->getPHID()];
+      if ($handle->getType() ==
+          PhabricatorRepositoryPHIDTypeCommit::TYPECONST) {
+        $commit = id(new DiffusionCommitQuery())
+          ->setViewer($request->getUser())
+          ->withPHIDs(array($handle->getPHID()))
+          ->executeOne();
+        if ($commit) {
+          $repository = $commit->getRepository();
+          if ($repository->isImporting()) {
+            $title = pht(
+              'The %s repository is still importing.',
+              $repository->getMonogram());
+            $body = pht(
+              'Herald rules will not trigger until import completes.');
+          } else if (!$repository->isTracked()) {
+            $title = pht(
+              'The %s repository is not tracked.',
+              $repository->getMonogram());
+            $body = pht(
+              'Herald rules will not trigger until tracking is enabled.');
+          } else {
+            return $panel;
+          }
+          $panel = id(new AphrontErrorView())
+            ->setSeverity(AphrontErrorView::SEVERITY_WARNING)
+            ->setTitle($title)
+            ->appendChild($body);
+        }
+      }
+    }
+    return $panel;
+  }
+
+  private function buildApplyTranscriptPanel(HeraldTranscript $xscript) {
     $handles = $this->handles;
     $adapter = $this->getAdapter();
 
     $rule_type_global = HeraldRuleTypeConfig::RULE_TYPE_GLOBAL;
     $action_names = $adapter->getActionNameMap($rule_type_global);
 
-    $rows = array();
+    $list = new PHUIObjectItemListView();
+    $list->setStates(true);
+    $list->setNoDataString(pht('No actions were taken.'));
     foreach ($xscript->getApplyTranscripts() as $apply_xscript) {
 
       $target = $apply_xscript->getTarget();
       switch ($apply_xscript->getAction()) {
         case HeraldAdapter::ACTION_NOTHING:
-          $target = '';
+          $target = null;
           break;
         case HeraldAdapter::ACTION_FLAG:
           $target = PhabricatorFlagColor::getColorName($target);
@@ -295,65 +354,47 @@ final class HeraldTranscriptController extends HeraldController {
           $target = $target;
           break;
         default:
-          if ($target) {
+          if (is_array($target) && $target) {
             foreach ($target as $k => $phid) {
-              $target[$k] = $handles[$phid]->getName();
+              if (isset($handles[$phid])) {
+                $target[$k] = $handles[$phid]->getName();
+              }
             }
-            $target = implode("\n", $target);
+            $target = implode(', ', $target);
+          } else if (is_string($target)) {
+            $target = $target;
           } else {
             $target = '<empty>';
           }
           break;
       }
 
+      $item = new PHUIObjectItemView();
+
       if ($apply_xscript->getApplied()) {
-        $outcome = phutil_tag(
-          'span',
-          array('class' => 'outcome-success'),
-          pht('SUCCESS'));
+        $item->setState(PHUIObjectItemView::STATE_SUCCESS);
       } else {
-        $outcome = phutil_tag(
-          'span',
-          array('class' => 'outcome-failure'),
-          pht('FAILURE'));
+        $item->setState(PHUIObjectItemView::STATE_FAIL);
       }
 
-      $rows[] = array(
-        idx($action_names, $apply_xscript->getAction(), pht('Unknown')),
-        $target,
-        hsprintf(
-          '<strong>Taken because:</strong> %s<br />'.
-            '<strong>Outcome:</strong> %s %s',
-          $apply_xscript->getReason(),
-          $outcome,
-          $apply_xscript->getAppliedReason()),
-      );
+      $rule = idx($action_names, $apply_xscript->getAction(), pht('Unknown'));
+
+      $item->setHeader(pht('%s: %s', $rule, $target));
+      $item->addAttribute($apply_xscript->getReason());
+      $item->addAttribute(
+        pht('Outcome: %s', $apply_xscript->getAppliedReason()));
+
+      $list->addItem($item);
     }
 
-    $table = new AphrontTableView($rows);
-    $table->setNoDataString(pht('No actions were taken.'));
-    $table->setHeaders(
-      array(
-        pht('Action'),
-        pht('Target'),
-        pht('Details'),
-      ));
-    $table->setColumnClasses(
-      array(
-        '',
-        '',
-        'wide',
-      ));
+    $box = new PHUIObjectBoxView();
+    $box->setHeaderText(pht('Actions Taken'));
+    $box->appendChild($list);
 
-    $panel = new AphrontPanelView();
-    $panel->setHeader(pht('Actions Taken'));
-    $panel->appendChild($table);
-    $panel->setNoBackground();
-
-    return $panel;
+    return $box;
   }
 
-  private function buildActionTranscriptPanel($xscript) {
+  private function buildActionTranscriptPanel(HeraldTranscript $xscript) {
     $action_xscript = mgroup($xscript->getApplyTranscripts(), 'getRuleID');
 
     $adapter = $this->getAdapter();
@@ -433,20 +474,19 @@ final class HeraldTranscriptController extends HeraldController {
           )));
     }
 
-    $panel = '';
+    $box = null;
     if ($rule_markup) {
-      $panel = new AphrontPanelView();
-      $panel->setHeader(pht('Rule Details'));
-      $panel->setNoBackground();
-      $panel->appendChild(phutil_tag(
+      $box = new PHUIObjectBoxView();
+      $box->setHeaderText(pht('Rule Details'));
+      $box->appendChild(phutil_tag(
         'ul',
         array('class' => 'herald-explain-list'),
         $rule_markup));
     }
-    return $panel;
+    return $box;
   }
 
-  private function buildObjectTranscriptPanel($xscript) {
+  private function buildObjectTranscriptPanel(HeraldTranscript $xscript) {
 
     $adapter = $this->getAdapter();
     $field_names = $adapter->getFieldNameMap();
@@ -456,7 +496,7 @@ final class HeraldTranscriptController extends HeraldController {
     $data = array();
     if ($object_xscript) {
       $phid = $object_xscript->getPHID();
-      $handles = $this->loadViewerHandles(array($phid));
+      $handles = $this->handles;
 
       $data += array(
         pht('Object Name') => $object_xscript->getName(),
@@ -495,19 +535,17 @@ final class HeraldTranscriptController extends HeraldController {
       $rows[] = array($name, $value);
     }
 
-    $table = new AphrontTableView($rows);
-    $table->setColumnClasses(
-      array(
-        'header',
-        'wide',
-      ));
+    $property_list = new PHUIPropertyListView();
+    $property_list->setStacked(true);
+    foreach ($rows as $row) {
+      $property_list->addProperty($row[0], $row[1]);
+    }
 
-    $panel = new AphrontPanelView();
-    $panel->setHeader(pht('Object Transcript'));
-    $panel->setNoBackground();
-    $panel->appendChild($table);
+    $box = new PHUIObjectBoxView();
+    $box->setHeaderText(pht('Object Transcript'));
+    $box->appendChild($property_list);
 
-    return $panel;
+    return $box;
   }
 
 

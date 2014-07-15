@@ -5,7 +5,7 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
   private $dblob;
 
   public function willProcessRequest(array $data) {
-    $this->dblob = idx($data, "dblob", "");
+    $this->dblob = idx($data, 'dblob', '');
   }
 
   public function processRequest() {
@@ -32,10 +32,8 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
       ->withLeadingPath($fragment->getPath().'/')
       ->execute();
 
-    $error_view = null;
-
+    $errors = array();
     if ($request->isFormPost()) {
-      $errors = array();
 
       $v_name = $request->getStr('name');
       if (strlen($v_name) === 0) {
@@ -79,13 +77,9 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
             ->setURI('/phragment/snapshot/view/'.$snapshot->getID());
         }
       }
-
-      $error_view = id(new AphrontErrorView())
-        ->setErrors($errors)
-        ->setTitle(pht('Errors while creating snapshot'));
     }
 
-    $fragment_sequence = "-";
+    $fragment_sequence = '-';
     if ($fragment->getLatestVersion() !== null) {
       $fragment_sequence = $fragment->getLatestVersion()->getSequence();
     }
@@ -104,7 +98,7 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
         phutil_tag('td', array(), $fragment->getPath()),
         phutil_tag('td', array(), $fragment_sequence)));
     foreach ($children as $child) {
-      $sequence = "-";
+      $sequence = '-';
       if ($child->getLatestVersion() !== null) {
         $sequence = $child->getLatestVersion()->getSequence();
       }
@@ -129,8 +123,8 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
           'p',
           array(),
           pht(
-            "The snapshot will contain the following fragments at ".
-            "the specified versions: ")),
+            'The snapshot will contain the following fragments at '.
+            'the specified versions: ')),
         $table));
 
     $form = id(new AphrontFormView())
@@ -158,7 +152,7 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
 
     $box = id(new PHUIObjectBoxView())
       ->setHeaderText(pht('Create Snapshot of %s', $fragment->getName()))
-      ->setFormError($error_view)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
@@ -168,7 +162,7 @@ final class PhragmentSnapshotCreateController extends PhragmentController {
         $box),
       array(
         'title' => pht('Create Fragment'),
-        'device' => true));
+      ));
   }
 
 }

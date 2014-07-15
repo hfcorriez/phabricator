@@ -7,7 +7,16 @@ final class PhabricatorApplicationTransactionResponse
   private $transactions;
   private $anchorOffset;
   private $isPreview;
-  private $isDetailView;
+  private $transactionView;
+
+  public function setTransactionView($transaction_view) {
+    $this->transactionView = $transaction_view;
+    return $this;
+  }
+
+  public function getTransactionView() {
+    return $this->transactionView;
+  }
 
   protected function buildProxy() {
     return new AphrontAjaxResponse();
@@ -47,13 +56,10 @@ final class PhabricatorApplicationTransactionResponse
     return $this;
   }
 
-  public function setIsDetailView($is_detail_view) {
-    $this->isDetailView = $is_detail_view;
-    return $this;
-  }
-
   public function reduceProxyResponse() {
-    if ($this->getTransactions()) {
+    if ($this->transactionView) {
+      $view = $this->transactionView;
+    } else if ($this->getTransactions()) {
       $view = head($this->getTransactions())
         ->getApplicationTransactionViewObject();
     } else {
@@ -63,8 +69,7 @@ final class PhabricatorApplicationTransactionResponse
     $view
       ->setUser($this->getViewer())
       ->setTransactions($this->getTransactions())
-      ->setIsPreview($this->isPreview)
-      ->setIsDetailView($this->isDetailView);
+      ->setIsPreview($this->isPreview);
 
     if ($this->getAnchorOffset()) {
       $view->setAnchorOffset($this->getAnchorOffset());
@@ -78,7 +83,7 @@ final class PhabricatorApplicationTransactionResponse
 
     $content = array(
       'xactions' => $xactions,
-      'spacer'   => PhabricatorTimelineView::renderSpacer(),
+      'spacer'   => PHUITimelineView::renderSpacer(),
     );
 
     return $this->getProxy()->setContent($content);

@@ -7,7 +7,7 @@ final class PhabricatorApplicationPhortune extends PhabricatorApplication {
   }
 
   public function getShortDescription() {
-    return pht('Account and Billing');
+    return pht('Accounts and Billing');
   }
 
   public function getIconName() {
@@ -40,9 +40,6 @@ final class PhabricatorApplicationPhortune extends PhabricatorApplication {
         'account/' => array(
           '' => 'PhortuneAccountListController',
           'edit/(?:(?P<id>\d+)/)?' => 'PhortuneAccountEditController',
-        ),
-        'stripe/' => array(
-          'testpaymentform/' => 'PhortuneStripeTestPaymentFormController',
         ),
         'product/' => array(
           '' => 'PhortuneProductListController',

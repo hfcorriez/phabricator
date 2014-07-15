@@ -72,7 +72,7 @@ then
   YUMCOMMAND="$SUDO yum install httpd git php53 php53-cli php53-mysql php53-process php53-devel php53-gd gcc wget make pcre-devel mysql-server"
 else
   # RHEL 6+ defaults with php 5.3
-  YUMCOMMAND="$SUDO yum install httpd git php php-cli php-mysql php-process php-devel php-gd php-pecl-apc php-pecl-json mysql-server"
+  YUMCOMMAND="$SUDO yum install httpd git php php-cli php-mysql php-process php-devel php-gd php-pecl-apc php-pecl-json php-mbstring mysql-server"
 fi
 
 echo "Dropping to yum to install dependencies..."
@@ -119,21 +119,21 @@ confirm
 
 if [[ ! -e libphutil ]]
 then
-  git clone git://github.com/facebook/libphutil.git
+  git clone https://github.com/phacility/libphutil.git
 else
   (cd libphutil && git pull --rebase)
 fi
 
 if [[ ! -e arcanist ]]
 then
-  git clone git://github.com/facebook/arcanist.git
+  git clone https://github.com/phacility/arcanist.git
 else
   (cd arcanist && git pull --rebase)
 fi
 
 if [[ ! -e phabricator ]]
 then
-  git clone git://github.com/facebook/phabricator.git
+  git clone https://github.com/phacility/phabricator.git
 else
   (cd phabricator && git pull --rebase)
 fi

@@ -85,6 +85,7 @@ final class PhabricatorAuthEditController
     $v_registration = $config->getShouldAllowRegistration();
     $v_link = $config->getShouldAllowLink();
     $v_unlink = $config->getShouldAllowUnlink();
+    $v_trust_email = $config->getShouldTrustEmails();
 
     if ($request->isFormPost()) {
 
@@ -120,6 +121,11 @@ final class PhabricatorAuthEditController
             PhabricatorAuthProviderConfigTransaction::TYPE_UNLINK)
           ->setNewValue($request->getInt('allowUnlink', 0));
 
+        $xactions[] = id(new PhabricatorAuthProviderConfigTransaction())
+          ->setTransactionType(
+            PhabricatorAuthProviderConfigTransaction::TYPE_TRUST_EMAILS)
+          ->setNewValue($request->getInt('trustEmails', 0));
+
         foreach ($properties as $key => $value) {
           $xactions[] = id(new PhabricatorAuthProviderConfigTransaction())
             ->setTransactionType(
@@ -153,10 +159,6 @@ final class PhabricatorAuthEditController
       $issues = array();
     }
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())->setErrors($errors);
-    }
-
     if ($is_new) {
       $button = pht('Add Provider');
       $crumb = pht('Add Provider');
@@ -175,8 +177,8 @@ final class PhabricatorAuthEditController
     $email_domains = PhabricatorEnv::getEnvConfig($config_name);
     if ($email_domains) {
       $registration_warning = pht(
-        "Users will only be able to register with a verified email address ".
-        "at one of the configured [[ %s | %s ]] domains: **%s**",
+        'Users will only be able to register with a verified email address '.
+        'at one of the configured [[ %s | %s ]] domains: **%s**',
         $config_href,
         $config_name,
         implode(', ', $email_domains));
@@ -216,8 +218,15 @@ final class PhabricatorAuthEditController
         'existing Phabricator accounts. If you disable this, Phabricator '.
         'accounts will be permanently bound to provider accounts.'));
 
-    $status_tag = id(new PhabricatorTagView())
-      ->setType(PhabricatorTagView::TYPE_STATE);
+    $str_trusted_email = hsprintf(
+      '<strong>%s:</strong> %s',
+      pht('Trust Email Addresses'),
+      pht(
+        'Phabricator will skip email verification for accounts registered '.
+        'through this provider.'));
+
+    $status_tag = id(new PHUITagView())
+      ->setType(PHUITagView::TYPE_STATE);
     if ($is_new) {
       $status_tag
         ->setName(pht('New Provider'))
@@ -266,6 +275,16 @@ final class PhabricatorAuthEditController
             $str_unlink,
             $v_unlink));
 
+    if ($provider->shouldAllowEmailTrustConfiguration()) {
+      $form->appendChild(
+        id(new AphrontFormCheckboxControl())
+          ->addCheckbox(
+            'trustEmails',
+            1,
+            $str_trusted_email,
+            $v_trust_email));
+    }
+
     $provider->extendEditForm($request, $form, $properties, $issues);
 
     $form
@@ -279,6 +298,8 @@ final class PhabricatorAuthEditController
       $form->appendChild(id(new PHUIFormDividerControl()));
       $form->appendRemarkupInstructions($help);
     }
+
+    $footer = $provider->renderConfigurationFooter();
 
     $crumbs = $this->buildApplicationCrumbs();
     $crumbs->addTextCrumb($crumb);
@@ -302,18 +323,18 @@ final class PhabricatorAuthEditController
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
       array(
         $crumbs,
         $form_box,
+        $footer,
         $xaction_view,
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 

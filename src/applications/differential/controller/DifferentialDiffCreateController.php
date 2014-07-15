@@ -20,8 +20,8 @@ final class DifferentialDiffCreateController extends DifferentialController {
 
       if (!strlen($diff)) {
         $errors[] = pht(
-          "You can not create an empty diff. Copy/paste a diff, or upload a ".
-          "diff file.");
+          'You can not create an empty diff. Copy/paste a diff, or upload a '.
+          'diff file.');
         $e_diff = pht('Required');
         $e_file = pht('Required');
       }
@@ -41,8 +41,7 @@ final class DifferentialDiffCreateController extends DifferentialController {
     }
 
     $form = new AphrontFormView();
-    $arcanist_href = PhabricatorEnv::getDoclink(
-      'article/Arcanist_User_Guide.html');
+    $arcanist_href = PhabricatorEnv::getDoclink('Arcanist User Guide');
     $arcanist_link = phutil_tag(
       'a',
       array(
@@ -80,20 +79,15 @@ final class DifferentialDiffCreateController extends DifferentialController {
       ->appendChild(
         id(new AphrontFormSubmitControl())
           ->addCancelButton($cancel_uri)
-          ->setValue(pht("Create Diff")));
+          ->setValue(pht('Create Diff')));
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText(pht('Create New Diff'))
-      ->setFormError($errors)
-      ->setForm($form);
+      ->setForm($form)
+      ->setFormErrors($errors);
 
     $crumbs = $this->buildApplicationCrumbs();
     $crumbs->addTextCrumb(pht('Create Diff'));
-
-    if ($errors) {
-      $errors = id(new AphrontErrorView())
-        ->setErrors($errors);
-    }
 
     return $this->buildApplicationPage(
       array(
@@ -102,7 +96,6 @@ final class DifferentialDiffCreateController extends DifferentialController {
       ),
       array(
         'title' => pht('Create Diff'),
-        'device' => true,
       ));
   }
 

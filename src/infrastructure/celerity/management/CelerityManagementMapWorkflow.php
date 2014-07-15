@@ -17,14 +17,14 @@ final class CelerityManagementMapWorkflow
 
     $this->log(
       pht(
-        "Rebuilding %d resource source(s).",
+        'Rebuilding %d resource source(s).',
         new PhutilNumber(count($resources_map))));
 
     foreach ($resources_map as $name => $resources) {
       $this->rebuildResources($resources);
     }
 
-    $this->log(pht("Done."));
+    $this->log(pht('Done.'));
 
     return 0;
   }
@@ -196,7 +196,7 @@ final class CelerityManagementMapWorkflow
    *
    * @param string Resource name.
    * @param string Resource data.
-   * @return pair<string|null, list<string>|nul> The `@provides` symbol and the
+   * @return pair<string|null, list<string>|null> The `@provides` symbol and the
    *    list of `@requires` symbols. If the resource is not part of the
    *    dependency graph, both are null.
    */
@@ -351,9 +351,7 @@ final class CelerityManagementMapWorkflow
   }
 
   private function formatMapContent(array $data) {
-    $content = var_export($data, true);
-    $content = preg_replace('/\s+$/m', '', $content);
-    $content = preg_replace('/array \(/', 'array(', $content);
+    $content = phutil_var_export($data, true);
 
     $generated = '@'.'generated';
     return <<<EOFILE

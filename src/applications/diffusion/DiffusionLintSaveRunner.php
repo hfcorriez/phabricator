@@ -44,7 +44,10 @@ final class DiffusionLintSaveRunner {
 
   public function run($dir) {
     $working_copy = ArcanistWorkingCopyIdentity::newFromPath($dir);
-    $api = ArcanistRepositoryAPI::newAPIFromWorkingCopyIdentity($working_copy);
+    $configuration_manager = new ArcanistConfigurationManager();
+    $configuration_manager->setWorkingCopyIdentity($working_copy);
+    $api = ArcanistRepositoryAPI::newAPIFromConfigurationManager(
+      $configuration_manager);
 
     $this->svnRoot = id(new PhutilURI($api->getSourceControlPath()))->getPath();
     if ($api instanceof ArcanistGitAPI) {
@@ -63,20 +66,14 @@ final class DiffusionLintSaveRunner {
     }
 
     $branch_name = $api->getBranchName();
-    $this->branch = new PhabricatorRepositoryBranch();
-    $this->conn = $this->branch->establishConnection('w');
-    $this->branch = $this->branch->loadOneWhere(
-      'repositoryID = %d AND name = %s',
+
+    $this->branch = PhabricatorRepositoryBranch::loadOrCreateBranch(
       $project->getRepositoryID(),
       $branch_name);
+    $this->conn = $this->branch->establishConnection('w');
 
     $this->lintCommit = null;
-    if (!$this->branch) {
-      $this->branch = id(new PhabricatorRepositoryBranch())
-        ->setRepositoryID($project->getRepositoryID())
-        ->setName($branch_name)
-        ->save();
-    } else if (!$this->all) {
+    if (!$this->all) {
       $this->lintCommit = $this->branch->getLintCommit();
     }
 
@@ -91,6 +88,7 @@ final class DiffusionLintSaveRunner {
         $this->lintCommit = null;
       }
     }
+
 
     if (!$this->lintCommit) {
       $where = ($this->svnRoot

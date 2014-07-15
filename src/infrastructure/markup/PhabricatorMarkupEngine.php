@@ -41,7 +41,7 @@ final class PhabricatorMarkupEngine {
 
   private $objects = array();
   private $viewer;
-  private $version = 8;
+  private $version = 12;
 
 
 /* -(  Markup Pipeline  )---------------------------------------------------- */
@@ -190,7 +190,7 @@ final class PhabricatorMarkupEngine {
 
     if (!isset($this->objects[$key]['output'])) {
       throw new Exception(
-        "Call process() before using results.");
+        'Call process() before using results.');
     }
   }
 
@@ -352,6 +352,7 @@ final class PhabricatorMarkupEngine {
    */
   public static function newDiffusionMarkupEngine(array $options = array()) {
     return self::newMarkupEngine(array(
+      'header.generate-toc' => true,
     ));
   }
 
@@ -373,11 +374,22 @@ final class PhabricatorMarkupEngine {
         $engine = self::newMarkupEngine(array());
         $engine->setConfig('preserve-linebreaks', false);
         break;
+      case 'diffusion-readme':
+        $engine = self::newMarkupEngine(array());
+        $engine->setConfig('preserve-linebreaks', false);
+        $engine->setConfig('header.generate-toc', true);
+        break;
       case 'diviner':
         $engine = self::newMarkupEngine(array());
         $engine->setConfig('preserve-linebreaks', false);
   //    $engine->setConfig('diviner.renderer', new DivinerDefaultRenderer());
         $engine->setConfig('header.generate-toc', true);
+        break;
+      case 'extract':
+        // Engine used for reference/edge extraction. Turn off anything which
+        // is slow and doesn't change reference extraction.
+        $engine = self::newMarkupEngine(array());
+        $engine->setConfig('pygments.enabled', false);
         break;
       default:
         throw new Exception("Unknown engine ruleset: {$ruleset}!");
@@ -455,6 +467,7 @@ final class PhabricatorMarkupEngine {
     $rules[] = new PhutilRemarkupRuleBold();
     $rules[] = new PhutilRemarkupRuleItalic();
     $rules[] = new PhutilRemarkupRuleDel();
+    $rules[] = new PhutilRemarkupRuleUnderline();
 
     foreach (self::loadCustomInlineRules() as $rule) {
       $rules[] = $rule;
@@ -462,6 +475,7 @@ final class PhabricatorMarkupEngine {
 
     $blocks = array();
     $blocks[] = new PhutilRemarkupEngineRemarkupQuotesBlockRule();
+    $blocks[] = new PhutilRemarkupEngineRemarkupReplyBlockRule();
     $blocks[] = new PhutilRemarkupEngineRemarkupLiteralBlockRule();
     $blocks[] = new PhutilRemarkupEngineRemarkupHeaderBlockRule();
     $blocks[] = new PhutilRemarkupEngineRemarkupHorizontalRuleBlockRule();
@@ -486,11 +500,14 @@ final class PhabricatorMarkupEngine {
     return $engine;
   }
 
-  public static function extractPHIDsFromMentions(array $content_blocks) {
+  public static function extractPHIDsFromMentions(
+    PhabricatorUser $viewer,
+    array $content_blocks) {
+
     $mentions = array();
 
     $engine = self::newDifferentialMarkupEngine();
-    $engine->setConfig('viewer', PhabricatorUser::getOmnipotentUser());
+    $engine->setConfig('viewer', $viewer);
 
     foreach ($content_blocks as $content_block) {
       $engine->markupText($content_block);
@@ -504,11 +521,12 @@ final class PhabricatorMarkupEngine {
   }
 
   public static function extractFilePHIDsFromEmbeddedFiles(
+    PhabricatorUser $viewer,
     array $content_blocks) {
     $files = array();
 
     $engine = self::newDifferentialMarkupEngine();
-    $engine->setConfig('viewer', PhabricatorUser::getOmnipotentUser());
+    $engine->setConfig('viewer', $viewer);
 
     foreach ($content_blocks as $content_block) {
       $engine->markupText($content_block);

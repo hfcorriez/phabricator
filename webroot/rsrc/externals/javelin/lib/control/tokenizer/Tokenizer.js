@@ -30,8 +30,6 @@
  *
  * When the tokenizer is focused, the CSS class `jx-tokenizer-container-focused`
  * is added to the container node.
- *
- * @group control
  */
 JX.install('Tokenizer', {
   construct : function(containerNode) {
@@ -46,7 +44,8 @@ JX.install('Tokenizer', {
     'change'],
 
   properties : {
-    limit : null
+    limit : null,
+    renderTokenCallback : null
   },
 
   members : {
@@ -329,11 +328,17 @@ JX.install('Tokenizer', {
         sigil: 'remove'
       }, '\u00d7'); // U+00D7 multiplication sign
 
+      var display_token = value;
+      var render_callback = this.getRenderTokenCallback();
+      if (render_callback) {
+        display_token = render_callback(value, key);
+      }
+
       return JX.$N('a', {
         className: 'jx-tokenizer-token',
         sigil: 'token',
         meta: {key: key}
-      }, [value, input, remove]);
+      }, [display_token, input, remove]);
     },
 
     getTokens : function() {

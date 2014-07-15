@@ -7,7 +7,8 @@ final class ManiphestTask extends ManiphestDAO
     PhabricatorTokenReceiverInterface,
     PhabricatorFlaggableInterface,
     PhrequentTrackableInterface,
-    PhabricatorCustomFieldInterface {
+    PhabricatorCustomFieldInterface,
+    PhabricatorDestructableInterface {
 
   const MARKUP_FIELD_DESCRIPTION = 'markup:desc';
 
@@ -15,7 +16,7 @@ final class ManiphestTask extends ManiphestDAO
   protected $ownerPHID;
   protected $ccPHIDs = array();
 
-  protected $status = ManiphestTaskStatus::STATUS_OPEN;
+  protected $status;
   protected $priority;
   protected $subpriority = 0;
 
@@ -47,6 +48,7 @@ final class ManiphestTask extends ManiphestDAO
     $edit_policy = $app->getPolicy(ManiphestCapabilityDefaultEdit::CAPABILITY);
 
     return id(new ManiphestTask())
+      ->setStatus(ManiphestTaskStatus::getDefaultStatus())
       ->setPriority(ManiphestTaskPriority::getDefaultPriority())
       ->setAuthorPHID($actor->getPHID())
       ->setViewPolicy($view_policy)
@@ -118,6 +120,10 @@ final class ManiphestTask extends ManiphestDAO
     return $this;
   }
 
+  public function getMonogram() {
+    return 'T'.$this->getID();
+  }
+
   public function attachGroupByProjectPHID($phid) {
     $this->groupByProjectPHID = $phid;
     return $this;
@@ -151,6 +157,16 @@ final class ManiphestTask extends ManiphestDAO
     return $result;
   }
 
+  public function isClosed() {
+    return ManiphestTaskStatus::isClosedStatus($this->getStatus());
+  }
+
+  public function getPrioritySortVector() {
+    return array(
+      $this->getPriority(),
+      -$this->getSubpriority(),
+    );
+  }
 
 
 /* -(  Markup Interface  )--------------------------------------------------- */
@@ -242,6 +258,7 @@ final class ManiphestTask extends ManiphestDAO
 
 /* -(  PhabricatorTokenReceiverInterface  )---------------------------------- */
 
+
   public function getUsersToNotifyOfTokenGiven() {
     // Sort of ambiguous who this was intended for; just let them both know.
     return array_filter(
@@ -271,6 +288,28 @@ final class ManiphestTask extends ManiphestDAO
   public function attachCustomFields(PhabricatorCustomFieldAttachment $fields) {
     $this->customFields = $fields;
     return $this;
+  }
+
+
+/* -(  PhabricatorDestructableInterface  )----------------------------------- */
+
+
+  public function destroyObjectPermanently(
+    PhabricatorDestructionEngine $engine) {
+
+    $this->openTransaction();
+
+      // TODO: Once this implements PhabricatorTransactionInterface, this
+      // will be handled automatically and can be removed.
+      $xactions = id(new ManiphestTransaction())->loadAllWhere(
+        'objectPHID = %s',
+        $this->getPHID());
+      foreach ($xactions as $xaction) {
+        $engine->destroyObject($xaction);
+      }
+
+      $this->delete();
+    $this->saveTransaction();
   }
 
 }

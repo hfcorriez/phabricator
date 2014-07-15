@@ -4,11 +4,11 @@ final class PhabricatorCoreConfigOptions
   extends PhabricatorApplicationConfigOptions {
 
   public function getName() {
-    return pht("Core");
+    return pht('Core');
   }
 
   public function getDescription() {
-    return pht("Configure core options, including URIs.");
+    return pht('Configure core options, including URIs.');
   }
 
   public function getOptions() {
@@ -27,31 +27,31 @@ final class PhabricatorCoreConfigOptions
     return array(
       $this->newOption('phabricator.base-uri', 'string', null)
         ->setLocked(true)
-        ->setSummary(pht("URI where Phabricator is installed."))
+        ->setSummary(pht('URI where Phabricator is installed.'))
         ->setDescription(
           pht(
-            "Set the URI where Phabricator is installed. Setting this ".
-            "improves security by preventing cookies from being set on other ".
-            "domains, and allows daemons to send emails with links that have ".
-            "the correct domain."))
+            'Set the URI where Phabricator is installed. Setting this '.
+            'improves security by preventing cookies from being set on other '.
+            'domains, and allows daemons to send emails with links that have '.
+            'the correct domain.'))
         ->addExample('http://phabricator.example.com/', pht('Valid Setting')),
       $this->newOption('phabricator.production-uri', 'string', null)
         ->setSummary(
-          pht("Primary install URI, for multi-environment installs."))
+          pht('Primary install URI, for multi-environment installs.'))
         ->setDescription(
           pht(
-            "If you have multiple Phabricator environments (like a ".
-            "development/staging environment for working on testing ".
-            "Phabricator, and a production environment for deploying it), ".
-            "set the production environment URI here so that emails and other ".
-            "durable URIs will always generate with links pointing at the ".
-            "production environment. If unset, defaults to ".
-            "{{phabricator.base-uri}}. Most installs do not need to set ".
-            "this option."))
+            'If you have multiple Phabricator environments (like a '.
+            'development/staging environment for working on testing '.
+            'Phabricator, and a production environment for deploying it), '.
+            'set the production environment URI here so that emails and other '.
+            'durable URIs will always generate with links pointing at the '.
+            'production environment. If unset, defaults to '.
+            '{{phabricator.base-uri}}. Most installs do not need to set '.
+            'this option.'))
         ->addExample('http://phabricator.example.com/', pht('Valid Setting')),
       $this->newOption('phabricator.allowed-uris', 'list<string>', array())
         ->setLocked(true)
-        ->setSummary(pht("Alternative URIs that can access Phabricator."))
+        ->setSummary(pht('Alternative URIs that can access Phabricator.'))
         ->setDescription(
           pht(
             "These alternative URIs will be able to access 'normal' pages ".
@@ -59,12 +59,12 @@ final class PhabricatorCoreConfigOptions
               "won't work. The major use case for this is moving installs ".
               "across domains."))
         ->addExample(
-          '["http://phabricator2.example.com/", '.
-            '"http://phabricator3.example.com/"]',
+          "http://phabricator2.example.com/\n".
+          "http://phabricator3.example.com/",
           pht('Valid Setting')),
       $this->newOption('phabricator.timezone', 'string', null)
         ->setSummary(
-          pht("The timezone Phabricator should use."))
+          pht('The timezone Phabricator should use.'))
         ->setDescription(
           pht(
             "PHP requires that you set a timezone in your php.ini before ".
@@ -76,12 +76,25 @@ final class PhabricatorCoreConfigOptions
         ->addExample('America/Chicago', pht('US Central (CDT)'))
         ->addExample('America/Boise', pht('US Mountain (MDT)'))
         ->addExample('America/Los_Angeles', pht('US West (PDT)')),
+      $this->newOption('phabricator.cookie-prefix', 'string', null)
+        ->setSummary(
+          pht('Set a string Phabricator should use to prefix '.
+              'cookie names'))
+        ->setDescription(
+          pht(
+            'Cookies set for x.com are also sent for y.x.com. Assuming '.
+            'Phabricator instances are running on both domains, this will '.
+            'create a collision preventing you from logging in.'))
+        ->addExample('dev', pht('Prefix cookie with "dev"')),
       $this->newOption('phabricator.show-beta-applications', 'bool', false)
         ->setBoolOptions(
           array(
             pht('Install Beta Applications'),
             pht('Uninstall Beta Applications')
           ))
+        ->setSummary(
+          pht(
+            'Install applications which are still under development.'))
         ->setDescription(
           pht(
             "Phabricator includes 'Beta' applications which are in an early ".
@@ -99,17 +112,17 @@ final class PhabricatorCoreConfigOptions
             pht('Shenanigans'), // That should be interesting to translate. :P
           ))
         ->setSummary(
-          pht("Should Phabricator be serious?"))
+          pht('Allows you to remove levity and jokes from the UI.'))
         ->setDescription(
           pht(
-            "By default, Phabricator includes some silly nonsense in the UI, ".
-            "such as a submit button called 'Clowncopterize' in Differential ".
-            "and a call to 'Leap Into Action'. If you'd prefer more ".
-            "traditional UI strings like 'Submit', you can set this flag to ".
-            "disable most of the jokes and easter eggs.")),
+            'By default, Phabricator includes some flavor text in the UI, '.
+            'like a prompt to "Weigh In" rather than "Add Comment" in '.
+            'Maniphest. If you\'d prefer more traditional UI strings like '.
+            '"Add Comment", you can set this flag to disable most of the '.
+            'extra flavor.')),
        $this->newOption('environment.append-paths', 'list<string>', $paths)
         ->setSummary(
-          pht("These paths get appended to your \$PATH envrionment variable."))
+          pht('These paths get appended to your \$PATH envrionment variable.'))
         ->setDescription(
           pht(
             "Phabricator occasionally shells out to other binaries on the ".
@@ -125,34 +138,9 @@ final class PhabricatorCoreConfigOptions
             "The current value of PATH after configuration is applied is:\n\n".
             "  lang=text\n".
             "  %s", $path))
+        ->setLocked(true)
         ->addExample('/usr/local/bin', pht('Add One Path'))
         ->addExample("/usr/bin\n/usr/local/bin", pht('Add Multiple Paths')),
-       $this->newOption('tokenizer.ondemand', 'bool', false)
-        ->setBoolOptions(
-          array(
-            pht("Query on demand"),
-            pht("Query on page load"),
-          ))
-        ->setSummary(
-          pht("Query for tokenizer fields on demand."))
-        ->setDescription(
-          pht(
-            "Tokenizers are UI controls which let the user select other ".
-            "users, email addresses, project names, etc., by typing the ".
-            "first few letters and having the control autocomplete from a ".
-            "list. They can load their data in two ways: either in a big ".
-            "chunk up front, or as the user types. By default, the data is ".
-            "loaded in a big chunk. This is simpler and performs better for ".
-            "small datasets. However, if you have a very large number of ".
-            "users or projects, (in the ballpark of more than a thousand), ".
-            "loading all that data may become slow enough that it's ".
-            "worthwhile to query on demand instead. This makes the typeahead ".
-            "slightly less responsive but overall performance will be much ".
-            "better if you have a ton of stuff. You can figure out which ".
-            "setting is best for your install by changing this setting and ".
-            "then playing with a user tokenizer (like the user selectors in ".
-            "Maniphest or Differential) and seeing which setting loads ".
-            "faster and feels better.")),
       $this->newOption('config.lock', 'set', array())
         ->setLocked(true)
         ->setDescription(pht('Additional configuration options to lock.')),

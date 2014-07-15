@@ -48,7 +48,7 @@ final class PhabricatorMacroEditController
         if (!strlen($macro->getName())) {
           $errors[] = pht('Macro name is required.');
           $e_name = pht('Required');
-        } else if (!preg_match('/^[a-z0-9:_-]{3,}$/', $macro->getName())) {
+        } else if (!preg_match('/^[a-z0-9:_-]{3,}\z/', $macro->getName())) {
           $errors[] = pht(
             'Macro must be at least three characters long and contain only '.
             'lowercase letters, digits, hyphens, colons and underscores.');
@@ -133,14 +133,6 @@ final class PhabricatorMacroEditController
           $e_name = pht('Duplicate');
         }
       }
-    }
-
-    if ($errors) {
-      $error_view = new AphrontErrorView();
-      $error_view->setTitle(pht('Form Errors'));
-      $error_view->setErrors($errors);
-    } else {
-      $error_view = null;
     }
 
     $current_file = null;
@@ -257,7 +249,7 @@ final class PhabricatorMacroEditController
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($error_view)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
@@ -268,7 +260,6 @@ final class PhabricatorMacroEditController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 }

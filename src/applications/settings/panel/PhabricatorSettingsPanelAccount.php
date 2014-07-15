@@ -17,6 +17,7 @@ final class PhabricatorSettingsPanelAccount
 
   public function processRequest(AphrontRequest $request) {
     $user = $request->getUser();
+    $username = $user->getUsername();
 
     $pref_time = PhabricatorUserPreferences::PREFERENCE_TIME_FORMAT;
     $preferences = $user->loadPreferences();
@@ -51,28 +52,17 @@ final class PhabricatorSettingsPanelAccount
       }
     }
 
-    $notice = null;
-    if (!$errors) {
-      if ($request->getStr('saved')) {
-        $notice = new AphrontErrorView();
-        $notice->setSeverity(AphrontErrorView::SEVERITY_NOTICE);
-        $notice->setTitle(pht('Changes Saved'));
-        $notice->appendChild(
-          phutil_tag('p', array(), pht('Your changes have been saved.')));
-        $notice = $notice->render();
-      }
-    } else {
-      $notice = new AphrontErrorView();
-      $notice->setErrors($errors);
-    }
-
     $timezone_ids = DateTimeZone::listIdentifiers();
     $timezone_id_map = array_fuse($timezone_ids);
 
+    $label_unknown = pht('%s updated their profile', $username);
+    $label_her = pht('%s updated her profile', $username);
+    $label_his = pht('%s updated his profile', $username);
+
     $sexes = array(
-      PhutilPerson::SEX_UNKNOWN => pht('Unspecified'),
-      PhutilPerson::SEX_MALE => pht('Male'),
-      PhutilPerson::SEX_FEMALE => pht('Female'),
+      PhutilPerson::SEX_UNKNOWN => $label_unknown,
+      PhutilPerson::SEX_MALE => $label_his,
+      PhutilPerson::SEX_FEMALE => $label_her,
     );
 
     $translations = array();
@@ -100,10 +90,11 @@ final class PhabricatorSettingsPanelAccount
           ->setName('timezone')
           ->setOptions($timezone_id_map)
           ->setValue($user->getTimezoneIdentifier()))
+      ->appendRemarkupInstructions(pht('**Choose the pronoun you prefer:**'))
       ->appendChild(
         id(new AphrontFormSelectControl())
           ->setOptions($sexes)
-          ->setLabel(pht('Sex'))
+          ->setLabel(pht('Pronoun'))
           ->setName('sex')
           ->setValue($user->getSex()))
       ->appendChild(
@@ -124,8 +115,7 @@ final class PhabricatorSettingsPanelAccount
           "| `H:i`   | 14:34    | 24-hour time. |\n".
           "\n\n".
           "You can find a [[%s | full reference in the PHP manual]].",
-          "http://www.php.net/manual/en/function.date.php"
-          ))
+          'http://www.php.net/manual/en/function.date.php'))
       ->appendChild(
         id(new AphrontFormTextControl())
           ->setLabel(pht('Time-of-Day Format'))
@@ -139,10 +129,11 @@ final class PhabricatorSettingsPanelAccount
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText(pht('Account Settings'))
+      ->setFormSaved($request->getStr('saved'))
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return array(
-      $notice,
       $form_box,
     );
   }

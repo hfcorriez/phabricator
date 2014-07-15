@@ -1,17 +1,13 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_feed_query_Method
-  extends ConduitAPI_feed_Method {
+final class ConduitAPI_feed_query_Method extends ConduitAPI_feed_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_UNSTABLE;
   }
 
   public function getMethodDescription() {
-    return "Query the feed for stories";
+    return 'Query the feed for stories';
   }
 
   private function getDefaultLimit() {
@@ -44,7 +40,7 @@ final class ConduitAPI_feed_query_Method
 
     return array(
       'ERR-UNKNOWN-TYPE' =>
-        'Unsupported view type, possibles are: ' . $view_types
+        'Unsupported view type, possibles are: '.$view_types,
     );
   }
 
@@ -53,7 +49,6 @@ final class ConduitAPI_feed_query_Method
   }
 
   protected function execute(ConduitAPIRequest $request) {
-
     $results = array();
     $user = $request->getUser();
 
@@ -95,7 +90,14 @@ final class ConduitAPI_feed_query_Method
 
         $data = null;
 
-        $view = $story->renderView();
+        try {
+          $view = $story->renderView();
+        } catch (Exception $ex) {
+          // When stories fail to render, just fail that story.
+          phlog($ex);
+          continue;
+        }
+
         $view->setEpoch($story->getEpoch());
         $view->setUser($user);
 
@@ -121,6 +123,7 @@ final class ConduitAPI_feed_query_Method
               'epoch' => $story_data->getEpoch(),
               'authorPHID' => $story_data->getAuthorPHID(),
               'chronologicalKey' => $story_data->getChronologicalKey(),
+              'objectPHID' => $story->getPrimaryObjectPHID(),
               'text' => $story->renderText()
             );
           break;

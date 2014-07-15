@@ -19,7 +19,7 @@ JX.behavior('maniphest-transaction-controls', function(config) {
     JX.$(config.select),
     'change',
     null,
-    function(e) {
+    function() {
       for (var k in config.controlMap) {
         if (k == JX.$(config.select).value) {
           JX.DOM.show(JX.$(config.controlMap[k]));
@@ -33,4 +33,3 @@ JX.behavior('maniphest-transaction-controls', function(config) {
     });
 
 });
-

@@ -4,18 +4,26 @@
  * Represents an abstract search engine for an application. It supports
  * creating and storing saved queries.
  *
- * @task builtin  Builtin Queries
- * @task uri      Query URIs
- * @task dates    Date Filters
- * @task read     Reading Utilities
- *
- * @group search
+ * @task construct  Constructing Engines
+ * @task app        Applications
+ * @task builtin    Builtin Queries
+ * @task uri        Query URIs
+ * @task dates      Date Filters
+ * @task read       Reading Utilities
+ * @task exec       Paging and Executing Queries
+ * @task render     Rendering Results
  */
 abstract class PhabricatorApplicationSearchEngine {
 
+  private $application;
   private $viewer;
   private $errors = array();
   private $customFields = false;
+  private $request;
+  private $context;
+
+  const CONTEXT_LIST  = 'list';
+  const CONTEXT_PANEL = 'panel';
 
   public function setViewer(PhabricatorUser $viewer) {
     $this->viewer = $viewer;
@@ -24,9 +32,30 @@ abstract class PhabricatorApplicationSearchEngine {
 
   protected function requireViewer() {
     if (!$this->viewer) {
-      throw new Exception("Call setViewer() before using an engine!");
+      throw new Exception('Call setViewer() before using an engine!');
     }
     return $this->viewer;
+  }
+
+  public function setContext($context) {
+    $this->context = $context;
+    return $this;
+  }
+
+  public function isPanelContext() {
+    return ($this->context == self::CONTEXT_PANEL);
+  }
+
+  public function saveQuery(PhabricatorSavedQuery $query) {
+    $query->setEngineClassName(get_class($this));
+
+    $unguarded = AphrontWriteGuard::beginScopedUnguardedWrites();
+    try {
+      $query->save();
+    } catch (AphrontQueryDuplicateKeyException $ex) {
+      // Ignore, this is just a repeated search.
+    }
+    unset($unguarded);
   }
 
   /**
@@ -102,6 +131,18 @@ abstract class PhabricatorApplicationSearchEngine {
   abstract protected function getURI($path);
 
 
+  /**
+   * Return a human readable description of the type of objects this query
+   * searches for.
+   *
+   * For example, "Tasks" or "Commits".
+   *
+   * @return string Human-readable description of what this engine is used to
+   *   find.
+   */
+  abstract public function getResultTypeDescription();
+
+
   public function newSavedQuery() {
     return id(new PhabricatorSavedQuery())
       ->setEngineClassName(get_class($this));
@@ -171,6 +212,69 @@ abstract class PhabricatorApplicationSearchEngine {
       }
     }
     return $named_queries;
+  }
+
+
+/* -(  Applications  )------------------------------------------------------- */
+
+
+  protected function getApplicationURI($path = '') {
+    return $this->getApplication()->getApplicationURI($path);
+  }
+
+  protected function getApplication() {
+    if (!$this->application) {
+      $class = $this->getApplicationClassName();
+
+      $this->application = id(new PhabricatorApplicationQuery())
+        ->setViewer($this->requireViewer())
+        ->withClasses(array($class))
+        ->withInstalled(true)
+        ->executeOne();
+
+      if (!$this->application) {
+        throw new Exception(
+          pht(
+            'Application "%s" is not installed!',
+            $class));
+      }
+    }
+
+    return $this->application;
+  }
+
+  protected function getApplicationClassName() {
+    throw new Exception(pht('Not implemented for this SearchEngine yet!'));
+  }
+
+
+/* -(  Constructing Engines  )----------------------------------------------- */
+
+
+  /**
+   * Load all available application search engines.
+   *
+   * @return list<PhabricatorApplicationSearchEngine> All available engines.
+   * @task construct
+   */
+  public static function getAllEngines() {
+    $engines = id(new PhutilSymbolLoader())
+      ->setAncestorClass(__CLASS__)
+      ->loadObjects();
+
+    return $engines;
+  }
+
+
+  /**
+   * Get an engine by class name, if it exists.
+   *
+   * @return PhabricatorApplicationSearchEngine|null Engine, or null if it does
+   *   not exist.
+   * @task construct
+   */
+  public static function getEngineByClassName($class_name) {
+    return idx(self::getAllEngines(), $class_name);
   }
 
 
@@ -349,7 +453,7 @@ abstract class PhabricatorApplicationSearchEngine {
    * This provides flexibility when constructing URIs, especially from external
    * sources.
    *
-   * @param AphrontRequest  Request to read PHIDs from.
+   * @param AphrontRequest  Request to read strings from.
    * @param string          Key to read in the request.
    * @return list<string>   List of values.
    */
@@ -366,6 +470,17 @@ abstract class PhabricatorApplicationSearchEngine {
     }
 
     return $list;
+  }
+
+  protected function readDateFromRequest(
+    AphrontRequest $request,
+    $key) {
+
+    return id(new AphrontFormDateControl())
+      ->setUser($this->requireViewer())
+      ->setName($key)
+      ->setAllowNull(true)
+      ->readValueFromRequest($request);
   }
 
   protected function readBoolFromRequest(
@@ -460,11 +575,98 @@ abstract class PhabricatorApplicationSearchEngine {
   }
 
 
-/* -(  Pagination  )--------------------------------------------------------- */
+/* -(  Paging and Executing Queries  )--------------------------------------- */
 
 
   public function getPageSize(PhabricatorSavedQuery $saved) {
     return $saved->getParameter('limit', 100);
+  }
+
+
+  public function shouldUseOffsetPaging() {
+    return false;
+  }
+
+
+  public function newPagerForSavedQuery(PhabricatorSavedQuery $saved) {
+    if ($this->shouldUseOffsetPaging()) {
+      $pager = new AphrontPagerView();
+    } else {
+      $pager = new AphrontCursorPagerView();
+    }
+
+    $page_size = $this->getPageSize($saved);
+    if (is_finite($page_size)) {
+      $pager->setPageSize($page_size);
+    } else {
+      // Consider an INF pagesize to mean a large finite pagesize.
+
+      // TODO: It would be nice to handle this more gracefully, but math
+      // with INF seems to vary across PHP versions, systems, and runtimes.
+      $pager->setPageSize(0xFFFF);
+    }
+
+    return $pager;
+  }
+
+
+  public function executeQuery(
+    PhabricatorPolicyAwareQuery $query,
+    AphrontView $pager) {
+
+    $query->setViewer($this->requireViewer());
+
+    if ($this->shouldUseOffsetPaging()) {
+      $objects = $query->executeWithOffsetPager($pager);
+    } else {
+      $objects = $query->executeWithCursorPager($pager);
+    }
+
+    return $objects;
+  }
+
+
+/* -(  Rendering  )---------------------------------------------------------- */
+
+
+  public function setRequest(AphrontRequest $request) {
+    $this->request = $request;
+    return $this;
+  }
+
+  public function getRequest() {
+    return $this->request;
+  }
+
+  public function renderResults(
+    array $objects,
+    PhabricatorSavedQuery $query) {
+
+    $phids = $this->getRequiredHandlePHIDsForResultList($objects, $query);
+
+    if ($phids) {
+      $handles = id(new PhabricatorHandleQuery())
+        ->setViewer($this->requireViewer())
+        ->witHPHIDs($phids)
+        ->execute();
+    } else {
+      $handles = array();
+    }
+
+    return $this->renderResultList($objects, $query, $handles);
+  }
+
+  protected function getRequiredHandlePHIDsForResultList(
+    array $objects,
+    PhabricatorSavedQuery $query) {
+    return array();
+  }
+
+  protected function renderResultList(
+    array $objects,
+    PhabricatorSavedQuery $query,
+    array $handles) {
+    throw new Exception(pht('Not supported here yet!'));
   }
 
 
@@ -500,6 +702,7 @@ abstract class PhabricatorApplicationSearchEngine {
         $fields = PhabricatorCustomField::getObjectFields(
           $object,
           PhabricatorCustomField::ROLE_APPLICATIONSEARCH);
+        $fields->setViewer($this->requireViewer());
       } else {
         $fields = null;
       }

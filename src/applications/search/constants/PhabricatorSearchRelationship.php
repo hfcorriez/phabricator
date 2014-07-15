@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group search
- */
 final class PhabricatorSearchRelationship {
 
   const RELATIONSHIP_AUTHOR     = 'auth';
@@ -14,5 +11,7 @@ final class PhabricatorSearchRelationship {
   const RELATIONSHIP_REPOSITORY = 'repo';
 
   const RELATIONSHIP_OPEN       = 'open';
+  const RELATIONSHIP_CLOSED     = 'clos';
+  const RELATIONSHIP_UNOWNED    = 'unow';
 
 }

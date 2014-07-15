@@ -1,7 +1,11 @@
 <?php
 
 final class PhabricatorTokenLeaderController
-    extends PhabricatorTokenController {
+  extends PhabricatorTokenController {
+
+  public function shouldAllowPublic() {
+    return true;
+  }
 
   public function processRequest() {
     $request = $this->getRequest();
@@ -52,7 +56,6 @@ final class PhabricatorTokenLeaderController
       $nav,
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 

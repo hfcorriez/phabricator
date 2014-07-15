@@ -9,14 +9,16 @@ final class ConduitAPI_releephwork_getcommitmessage_Method
 
   public function getMethodDescription() {
     return
-      "Get commit message components for building ".
-      "a ReleephRequest commit message.";
+      'Get commit message components for building '.
+      'a ReleephRequest commit message.';
   }
 
   public function defineParamTypes() {
+    $action_const = $this->formatStringConstants(array('pick', 'revert'));
+
     return array(
       'requestPHID' => 'required string',
-      'action'      => 'required enum<"pick", "revert">',
+      'action'      => 'required '.$action_const,
     );
   }
 
@@ -29,8 +31,12 @@ final class ConduitAPI_releephwork_getcommitmessage_Method
   }
 
   protected function execute(ConduitAPIRequest $request) {
-    $releeph_request = id(new ReleephRequest())
-      ->loadOneWhere('phid = %s', $request->getValue('requestPHID'));
+    $viewer = $request->getUser();
+
+    $releeph_request = id(new ReleephRequestQuery())
+      ->setViewer($viewer)
+      ->withPHIDs(array($request->getValue('requestPHID')))
+      ->executeOne();
 
     $action = $request->getValue('action');
 
@@ -38,8 +44,8 @@ final class ConduitAPI_releephwork_getcommitmessage_Method
 
     $commit_message = array();
 
-    $project = $releeph_request->loadReleephProject();
-    $branch = $releeph_request->loadReleephBranch();
+    $branch = $releeph_request->getBranch();
+    $project = $branch->getProduct();
 
     $selector = $project->getReleephFieldSelector();
     $fields = $selector->getFieldSpecifications();

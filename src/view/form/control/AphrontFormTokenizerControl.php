@@ -36,7 +36,6 @@ final class AphrontFormTokenizerControl extends AphrontFormControl {
     $values = nonempty($this->getValue(), array());
 
     assert_instances_of($values, 'PhabricatorObjectHandle');
-    $values = mpull($values, 'getFullName', 'getPHID');
 
     if ($this->getID()) {
       $id = $this->getID();
@@ -44,8 +43,10 @@ final class AphrontFormTokenizerControl extends AphrontFormControl {
       $id = celerity_generate_unique_node_id();
     }
 
-    if (!$this->placeholder) {
-      $this->placeholder = $this->getDefaultPlaceholder();
+    if (!strlen($this->placeholder)) {
+      $placeholder = $this->getDefaultPlaceholder();
+    } else {
+      $placeholder = $this->placeholder;
     }
 
     $template = new AphrontTokenizerTemplateView();
@@ -58,15 +59,21 @@ final class AphrontFormTokenizerControl extends AphrontFormControl {
       $username = $this->user->getUsername();
     }
 
+    if ($this->datasource instanceof PhabricatorTypeaheadDatasource) {
+      $datasource_uri = $this->datasource->getDatasourceURI();
+    } else {
+      $datasource_uri = $this->datasource;
+    }
+
     if (!$this->disableBehavior) {
       Javelin::initBehavior('aphront-basic-tokenizer', array(
         'id'          => $id,
-        'src'         => $this->datasource,
-        'value'       => $values,
+        'src'         => $datasource_uri,
+        'value'       => mpull($values, 'getFullName', 'getPHID'),
+        'icons'       => mpull($values, 'getIcon', 'getPHID'),
         'limit'       => $this->limit,
-        'ondemand'    => PhabricatorEnv::getEnvConfig('tokenizer.ondemand'),
         'username'    => $username,
-        'placeholder' => $this->placeholder,
+        'placeholder' => $placeholder,
       ));
     }
 
@@ -75,6 +82,10 @@ final class AphrontFormTokenizerControl extends AphrontFormControl {
 
   private function getDefaultPlaceholder() {
     $datasource = $this->datasource;
+
+    if ($datasource instanceof PhabricatorTypeaheadDatasource) {
+      return $datasource->getPlaceholderText();
+    }
 
     $matches = null;
     if (!preg_match('@^/typeahead/common/(.*)/$@', $datasource, $matches)) {
@@ -89,15 +100,17 @@ final class AphrontFormTokenizerControl extends AphrontFormControl {
       'usersorprojects' => pht('Type a user or project name...'),
       'searchowner'     => pht('Type a user name...'),
       'accounts'        => pht('Type a user name...'),
-      'mailable'        => pht('Type a user or mailing list...'),
-      'allmailable'     => pht('Type a user or mailing list...'),
+      'mailable'        => pht('Type a user, project, or mailing list...'),
+      'allmailable'     => pht('Type a user, project, or mailing list...'),
       'searchproject'   => pht('Type a project name...'),
       'projects'        => pht('Type a project name...'),
       'repositories'    => pht('Type a repository name...'),
       'packages'        => pht('Type a package name...'),
+      'macros'          => pht('Type a macro name...'),
       'arcanistproject' => pht('Type an arc project name...'),
       'accountsorprojects' => pht('Type a user or project name...'),
-      'macros' => pht('Type a macro name...'),
+      'usersprojectsorpackages' =>
+        pht('Type a user, project, or package name...'),
     );
 
     return idx($map, $request);

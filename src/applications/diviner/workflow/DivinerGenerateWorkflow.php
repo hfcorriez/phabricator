@@ -38,7 +38,41 @@ final class DivinerGenerateWorkflow extends DivinerWorkflow {
   }
 
   public function execute(PhutilArgumentParser $args) {
-    $this->readBookConfiguration($args);
+    $book = $args->getArg('book');
+    if ($book) {
+      $books = array($book);
+    } else {
+      $cwd = getcwd();
+      $this->log(pht('FINDING DOCUMENTATION BOOKS'));
+      $books = id(new FileFinder($cwd))
+        ->withType('f')
+        ->withSuffix('book')
+        ->find();
+
+      if (!$books) {
+        throw new PhutilArgumentUsageException(
+          pht(
+            "There are no Diviner '.book' files anywhere beneath the ".
+            "current directory. Use '--book <book>' to specify a ".
+            "documentation book to generate."));
+      } else {
+        $this->log(pht('Found %s book(s).', new PhutilNumber(count($books))));
+      }
+    }
+
+    foreach ($books as $book) {
+      $short_name = basename($book);
+
+      $this->log(pht('Generating book "%s"...', $short_name));
+      $this->generateBook($book, $args);
+      $this->log(pht('Completed generation of "%s".', $short_name)."\n");
+    }
+  }
+
+  private function generateBook($book, PhutilArgumentParser $args) {
+    $this->atomCache = null;
+
+    $this->readBookConfiguration($book);
 
     if ($args->getArg('clean')) {
       $this->log(pht('CLEARING CACHES'));
@@ -158,12 +192,12 @@ final class DivinerGenerateWorkflow extends DivinerWorkflow {
 
     if ($futures) {
       $this->resolveAtomizerFutures($futures, $file_hashes);
-      $this->log(pht("Atomization complete."));
+      $this->log(pht('Atomization complete.'));
     } else {
-      $this->log(pht("Atom cache is up to date, no files to atomize."));
+      $this->log(pht('Atom cache is up to date, no files to atomize.'));
     }
 
-    $this->log(pht("Writing atom cache."));
+    $this->log(pht('Writing atom cache.'));
 
     $this->getAtomCache()->saveAtoms();
 

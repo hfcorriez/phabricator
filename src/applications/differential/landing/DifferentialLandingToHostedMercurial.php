@@ -90,10 +90,10 @@ final class DifferentialLandingToHostedMercurial
     ArcanistRepositoryAPI $workspace,
     PhabricatorUser $user) {
 
-    $workspace->execxLocal("push -b default");
+    $workspace->execxLocal('push -b default');
   }
 
-  public function createMenuItems(
+  public function createMenuItem(
     PhabricatorUser $viewer,
     DifferentialRevision $revision,
     PhabricatorRepository $repository) {
@@ -107,14 +107,8 @@ final class DifferentialLandingToHostedMercurial
       return;
     }
 
-    $can_push = PhabricatorPolicyFilter::hasCapability(
-        $viewer,
-        $repository,
-        DiffusionCapabilityPush::CAPABILITY);
-
     return $this->createActionView(
       $revision,
-      pht('Land to Hosted Repository'),
-      !$can_push);
+      pht('Land to Hosted Repository'));
   }
 }

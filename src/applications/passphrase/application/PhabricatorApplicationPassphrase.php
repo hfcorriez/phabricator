@@ -7,7 +7,7 @@ final class PhabricatorApplicationPassphrase extends PhabricatorApplication {
   }
 
   public function getShortDescription() {
-    return pht('Credential Management');
+    return pht('Credential Store');
   }
 
   public function getIconName() {
@@ -40,7 +40,15 @@ final class PhabricatorApplicationPassphrase extends PhabricatorApplication {
         'edit/(?:(?P<id>\d+)/)?' => 'PassphraseCredentialEditController',
         'destroy/(?P<id>\d+)/' => 'PassphraseCredentialDestroyController',
         'reveal/(?P<id>\d+)/' => 'PassphraseCredentialRevealController',
+        'public/(?P<id>\d+)/' => 'PassphraseCredentialPublicController',
+        'lock/(?P<id>\d+)/' => 'PassphraseCredentialLockController',
       ));
+  }
+
+  public function getRemarkupRules() {
+    return array(
+      new PassphraseRemarkupRule(),
+    );
   }
 
 }

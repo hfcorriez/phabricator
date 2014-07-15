@@ -1,17 +1,13 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_feed_publish_Method
-  extends ConduitAPI_feed_Method {
+final class ConduitAPI_feed_publish_Method extends ConduitAPI_feed_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_UNSTABLE;
   }
 
   public function getMethodDescription() {
-    return "Publish a story to the feed.";
+    return 'Publish a story to the feed.';
   }
 
   public function defineParamTypes() {

@@ -6,6 +6,7 @@
  *           javelin-vector
  *           javelin-dom
  *           javelin-uri
+ *           javelin-behavior-device
  */
 
 JX.behavior('aphlict-dropdown', function(config, statics) {
@@ -13,10 +14,15 @@ JX.behavior('aphlict-dropdown', function(config, statics) {
   statics.visible = statics.visible || null;
 
   var dropdown = JX.$(config.dropdownID);
-  var count = JX.$(config.countID);
   var bubble = JX.$(config.bubbleID);
+
+  var count;
+  if (config.countID) {
+    count = JX.$(config.countID);
+  }
+
   var request = null;
-  var dirty = true;
+  var dirty = config.local ? false : true;
 
   function refresh() {
     if (dirty) {
@@ -32,7 +38,7 @@ JX.behavior('aphlict-dropdown', function(config, statics) {
     }
 
     request = new JX.Request(config.uri, function(response) {
-      var display = (response.number > 999) ? "\u221E" : response.number;
+      var display = (response.number > 999) ? '\u221E' : response.number;
 
       JX.DOM.setContent(count, display);
       if (response.number === 0) {
@@ -67,6 +73,12 @@ JX.behavior('aphlict-dropdown', function(config, statics) {
         return;
       }
 
+      if (!e.getNode('notification')) {
+        // User clicked somewhere in the dead area of the menu, like the header
+        // or footer.
+        return;
+      }
+
       // If the user clicked a notification (but missed a link) and it has a
       // primary URI, go there.
       var href = e.getNodeData('notification').href;
@@ -83,6 +95,10 @@ JX.behavior('aphlict-dropdown', function(config, statics) {
     null,
     function(e) {
       if (!e.isNormalClick()) {
+        return;
+      }
+
+      if (config.desktop && JX.Device.getDevice() != 'desktop') {
         return;
       }
 
@@ -108,16 +124,24 @@ JX.behavior('aphlict-dropdown', function(config, statics) {
       }
 
       var p = JX.$V(bubble);
+      JX.DOM.show(dropdown);
+
       p.y = null;
-      p.x -= 6;
+      if (config.right) {
+        p.x -= (JX.Vector.getDim(dropdown).x - JX.Vector.getDim(bubble).x);
+      } else {
+        p.x -= 6;
+      }
       p.setPos(dropdown);
 
-      JX.DOM.show(dropdown);
       statics.visible = dropdown;
     }
   );
 
   JX.Stratcom.listen('notification-panel-update', null, function() {
+    if (config.local) {
+      return;
+    }
     dirty = true;
     refresh();
   });

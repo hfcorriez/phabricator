@@ -26,11 +26,11 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     PhabricatorUserEmail $email) {
 
     if ($user->getID()) {
-      throw new Exception("User has already been created!");
+      throw new Exception('User has already been created!');
     }
 
     if ($email->getID()) {
-      throw new Exception("Email has already been created!");
+      throw new Exception('Email has already been created!');
     }
 
     if (!PhabricatorUser::validateUsername($user->getUsername())) {
@@ -64,9 +64,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         throw $ex;
       }
 
-      $log = PhabricatorUserLog::newLog(
+      $log = PhabricatorUserLog::initializeNewLog(
         $this->requireActor(),
-        $user,
+        $user->getPHID(),
         PhabricatorUserLog::ACTION_CREATE);
       $log->setNewValue($email->getAddress());
       $log->save();
@@ -84,7 +84,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     PhabricatorUser $user,
     PhabricatorUserEmail $email = null) {
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -93,9 +93,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         $email->save();
       }
 
-      $log = PhabricatorUserLog::newLog(
+      $log = PhabricatorUserLog::initializeNewLog(
         $this->requireActor(),
-        $user,
+        $user->getPHID(),
         PhabricatorUserLog::ACTION_EDIT);
       $log->save();
 
@@ -113,7 +113,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     PhutilOpaqueEnvelope $envelope) {
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -122,9 +122,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
       $user->setPassword($envelope);
       $user->save();
 
-      $log = PhabricatorUserLog::newLog(
+      $log = PhabricatorUserLog::initializeNewLog(
         $this->requireActor(),
-        $user,
+        $user->getPHID(),
         PhabricatorUserLog::ACTION_CHANGE_PASSWORD);
       $log->save();
 
@@ -139,7 +139,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     if (!PhabricatorUser::validateUsername($username)) {
@@ -161,9 +161,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         throw $ex;
       }
 
-      $log = PhabricatorUserLog::newLog(
+      $log = PhabricatorUserLog::initializeNewLog(
         $actor,
-        $user,
+        $user->getPHID(),
         PhabricatorUserLog::ACTION_CHANGE_USERNAME);
       $log->setOldValue($old_username);
       $log->setNewValue($username);
@@ -185,7 +185,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -198,14 +198,14 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           return $this;
         }
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_ADMIN);
         $log->setOldValue($user->getIsAdmin());
         $log->setNewValue($admin);
 
-        $user->setIsAdmin($admin);
+        $user->setIsAdmin((int)$admin);
         $user->save();
 
         $log->save();
@@ -223,7 +223,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -236,14 +236,14 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           return $this;
         }
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_SYSTEM_AGENT);
         $log->setOldValue($user->getIsSystemAgent());
         $log->setNewValue($system_agent);
 
-        $user->setIsSystemAgent($system_agent);
+        $user->setIsSystemAgent((int)$system_agent);
         $user->save();
 
         $log->save();
@@ -262,7 +262,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -275,14 +275,14 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           return $this;
         }
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_DISABLE);
         $log->setOldValue($user->getIsDisabled());
         $log->setNewValue($disable);
 
-        $user->setIsDisabled($disable);
+        $user->setIsDisabled((int)$disable);
         $user->save();
 
         $log->save();
@@ -301,7 +301,7 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
 
     $user->openTransaction();
@@ -314,9 +314,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           return $this;
         }
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_APPROVE);
         $log->setOldValue($user->getIsApproved());
         $log->setNewValue($approve);
@@ -327,69 +327,6 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         $log->save();
 
       $user->endWriteLocking();
-    $user->saveTransaction();
-
-    return $this;
-  }
-
-  /**
-   * @task role
-   */
-  public function deleteUser(PhabricatorUser $user, $disable) {
-    $actor = $this->requireActor();
-
-    if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
-    }
-
-    if ($actor->getPHID() == $user->getPHID()) {
-      throw new Exception("You can not delete yourself!");
-    }
-
-    $user->openTransaction();
-      $externals = id(new PhabricatorExternalAccount())->loadAllWhere(
-        'userPHID = %s',
-        $user->getPHID());
-      foreach ($externals as $external) {
-        $external->delete();
-      }
-
-      $prefs = id(new PhabricatorUserPreferences())->loadAllWhere(
-        'userPHID = %s',
-        $user->getPHID());
-      foreach ($prefs as $pref) {
-        $pref->delete();
-      }
-
-      $profiles = id(new PhabricatorUserProfile())->loadAllWhere(
-        'userPHID = %s',
-        $user->getPHID());
-      foreach ($profiles as $profile) {
-        $profile->delete();
-      }
-
-      $keys = id(new PhabricatorUserSSHKey())->loadAllWhere(
-        'userPHID = %s',
-        $user->getPHID());
-      foreach ($keys as $key) {
-        $key->delete();
-      }
-
-      $emails = id(new PhabricatorUserEmail())->loadAllWhere(
-        'userPHID = %s',
-        $user->getPHID());
-      foreach ($emails as $email) {
-        $email->delete();
-      }
-
-      $log = PhabricatorUserLog::newLog(
-        $actor,
-        $user,
-        PhabricatorUserLog::ACTION_DELETE);
-      $log->save();
-
-      $user->delete();
-
     $user->saveTransaction();
 
     return $this;
@@ -409,10 +346,10 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
     if ($email->getID()) {
-      throw new Exception("Email has already been created!");
+      throw new Exception('Email has already been created!');
     }
 
     // Use changePrimaryEmail() to change primary email.
@@ -435,9 +372,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           throw $ex;
         }
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_EMAIL_ADD);
         $log->setNewValue($email->getAddress());
         $log->save();
@@ -459,10 +396,10 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
     if (!$email->getID()) {
-      throw new Exception("Email has not been created yet!");
+      throw new Exception('Email has not been created yet!');
     }
 
     $user->openTransaction();
@@ -475,14 +412,14 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
           throw new Exception("Can't remove primary email!");
         }
         if ($email->getUserPHID() != $user->getPHID()) {
-          throw new Exception("Email not owned by user!");
+          throw new Exception('Email not owned by user!');
         }
 
         $email->delete();
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_EMAIL_REMOVE);
         $log->setOldValue($email->getAddress());
         $log->save();
@@ -503,10 +440,10 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     $actor = $this->requireActor();
 
     if (!$user->getID()) {
-      throw new Exception("User has not been created yet!");
+      throw new Exception('User has not been created yet!');
     }
     if (!$email->getID()) {
-      throw new Exception("Email has not been created yet!");
+      throw new Exception('Email has not been created yet!');
     }
 
     $user->openTransaction();
@@ -516,15 +453,15 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         $email->reload();
 
         if ($email->getUserPHID() != $user->getPHID()) {
-          throw new Exception("User does not own email!");
+          throw new Exception('User does not own email!');
         }
 
         if ($email->getIsPrimary()) {
-          throw new Exception("Email is already primary!");
+          throw new Exception('Email is already primary!');
         }
 
         if (!$email->getIsVerified()) {
-          throw new Exception("Email is not verified!");
+          throw new Exception('Email is not verified!');
         }
 
         $old_primary = $user->loadPrimaryEmail();
@@ -536,9 +473,9 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
         $email->setIsPrimary(1);
         $email->save();
 
-        $log = PhabricatorUserLog::newLog(
+        $log = PhabricatorUserLog::initializeNewLog(
           $actor,
-          $user,
+          $user->getPHID(),
           PhabricatorUserLog::ACTION_EMAIL_PRIMARY);
         $log->setOldValue($old_primary ? $old_primary->getAddress() : null);
         $log->setNewValue($email->getAddress());
@@ -557,6 +494,65 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
   }
 
 
+  /**
+   * Verify a user's email address.
+   *
+   * This verifies an individual email address. If the address is the user's
+   * primary address and their account was not previously verified, their
+   * account is marked as email verified.
+   *
+   * @task email
+   */
+  public function verifyEmail(
+    PhabricatorUser $user,
+    PhabricatorUserEmail $email) {
+    $actor = $this->requireActor();
+
+    if (!$user->getID()) {
+      throw new Exception('User has not been created yet!');
+    }
+    if (!$email->getID()) {
+      throw new Exception('Email has not been created yet!');
+    }
+
+    $user->openTransaction();
+      $user->beginWriteLocking();
+
+        $user->reload();
+        $email->reload();
+
+        if ($email->getUserPHID() != $user->getPHID()) {
+          throw new Exception(pht('User does not own email!'));
+        }
+
+        if (!$email->getIsVerified()) {
+          $email->setIsVerified(1);
+          $email->save();
+
+          $log = PhabricatorUserLog::initializeNewLog(
+            $actor,
+            $user->getPHID(),
+            PhabricatorUserLog::ACTION_EMAIL_VERIFY);
+          $log->setNewValue($email->getAddress());
+          $log->save();
+        }
+
+        if (!$user->getIsEmailVerified()) {
+          // If the user just verified their primary email address, mark their
+          // account as email verified.
+          $user_primary = $user->loadPrimaryEmail();
+          if ($user_primary->getID() == $email->getID()) {
+            $user->setIsEmailVerified(1);
+            $user->save();
+          }
+        }
+
+      $user->endWriteLocking();
+    $user->saveTransaction();
+
+  }
+
+
 /* -(  Internals  )---------------------------------------------------------- */
 
 
@@ -569,6 +565,10 @@ final class PhabricatorUserEditor extends PhabricatorEditor {
     // addresses. Normally, the application does checks and raises more
     // user friendly errors for us, but we omit the courtesy checks on some
     // pathways like administrative scripts for simplicity.
+
+    if (!PhabricatorUserEmail::isValidAddress($email->getAddress())) {
+      throw new Exception(PhabricatorUserEmail::describeValidAddresses());
+    }
 
     if (!PhabricatorUserEmail::isAllowedAddress($email->getAddress())) {
       throw new Exception(PhabricatorUserEmail::describeAllowedAddresses());

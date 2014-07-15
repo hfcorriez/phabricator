@@ -1,13 +1,9 @@
 <?php
 
-/**
- * @group conpherence
- */
 final class ConpherenceNotificationPanelController
   extends ConpherenceController {
 
   public function processRequest() {
-
     $request = $this->getRequest();
     $user = $request->getUser();
     $conpherences = array();
@@ -81,7 +77,12 @@ final class ConpherenceNotificationPanelController
       '<div class="phabricator-notification-header">%s</div>'.
       '%s'.
       '<div class="phabricator-notification-view-all">%s</div>',
-      pht('Messages'),
+      phutil_tag(
+        'a',
+        array(
+          'href' => '/conpherence/',
+        ),
+        pht('Messages')),
       $content,
       phutil_tag(
         'a',
@@ -103,4 +104,5 @@ final class ConpherenceNotificationPanelController
 
     return id(new AphrontAjaxResponse())->setContent($json);
   }
+
 }

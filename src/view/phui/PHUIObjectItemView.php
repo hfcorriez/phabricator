@@ -18,10 +18,20 @@ final class PHUIObjectItemView extends AphrontTagView {
   private $actions = array();
   private $headIcons = array();
   private $disabled;
+  private $imageURI;
+  private $state;
+  private $fontIcon;
+  private $imageIcon;
 
   const AGE_FRESH = 'fresh';
   const AGE_STALE = 'stale';
   const AGE_OLD   = 'old';
+
+  const STATE_SUCCESS = 'green';
+  const STATE_FAIL = 'red';
+  const STATE_WARN = 'yellow';
+  const STATE_NOTE = 'blue';
+  const STATE_BUILD = 'sky';
 
   public function setDisabled($disabled) {
     $this->disabled = $disabled;
@@ -97,6 +107,48 @@ final class PHUIObjectItemView extends AphrontTagView {
     return $this;
   }
 
+  public function setImageURI($image_uri) {
+    $this->imageURI = $image_uri;
+    return $this;
+  }
+
+  public function getImageURI() {
+    return $this->imageURI;
+  }
+
+  public function setImageIcon($image_icon) {
+    $this->imageIcon = $image_icon;
+    return $this;
+  }
+
+  public function getImageIcon() {
+    return $this->imageIcon;
+  }
+
+  public function setState($state) {
+    $this->state = $state;
+    switch ($state) {
+      case self::STATE_SUCCESS:
+        $fi = 'fa-check-circle green';
+      break;
+      case self::STATE_FAIL:
+        $fi = 'fa-times-circle red';
+      break;
+      case self::STATE_WARN:
+        $fi = 'fa-exclamation-circle yellow';
+      break;
+      case self::STATE_NOTE:
+        $fi = 'fa-info-circle blue';
+      break;
+      case self::STATE_BUILD:
+        $fi = 'fa-refresh ph-spin sky';
+      break;
+    }
+    $this->fontIcon = id(new PHUIIconView())
+      ->setIconFont($fi.' fa-2x');
+    return $this;
+  }
+
   public function setEpoch($epoch, $age = self::AGE_FRESH) {
     $date = phabricator_datetime($epoch, $this->getUser());
 
@@ -107,22 +159,19 @@ final class PHUIObjectItemView extends AphrontTagView {
         $this->addIcon('none', $date);
         break;
       case self::AGE_STALE:
-        require_celerity_resource('sprite-status-css');
         $attr = array(
           'tip' => pht('Stale (%s day(s))', new PhutilNumber($days)),
           'class' => 'icon-age-stale',
-          'sheet' => PHUIIconView::SPRITE_STATUS,
         );
-        $this->addIcon('time-yellow', $date, $attr);
+
+        $this->addIcon('fa-clock-o yellow', $date, $attr);
         break;
       case self::AGE_OLD:
-        require_celerity_resource('sprite-status-css');
         $attr = array(
           'tip' =>  pht('Old (%s day(s))', new PhutilNumber($days)),
           'class' => 'icon-age-old',
-          'sheet' => PHUIIconView::SPRITE_STATUS,
         );
-        $this->addIcon('time-red', $date, $attr);
+        $this->addIcon('fa-clock-o red', $date, $attr);
         break;
       default:
         throw new Exception("Unknown age '{$age}'!");
@@ -133,7 +182,7 @@ final class PHUIObjectItemView extends AphrontTagView {
 
   public function addAction(PHUIListItemView $action) {
     if (count($this->actions) >= 3) {
-      throw new Exception("Limit 3 actions per item.");
+      throw new Exception('Limit 3 actions per item.');
     }
     $this->actions[] = $action;
     return $this;
@@ -224,6 +273,10 @@ final class PHUIObjectItemView extends AphrontTagView {
       $item_classes[] = 'phui-object-item-disabled';
     }
 
+    if ($this->state) {
+      $item_classes[] = 'phui-object-item-state-'.$this->state;
+    }
+
     switch ($this->effect) {
       case 'highlighted':
         $item_classes[] = 'phui-object-item-highlighted';
@@ -234,11 +287,23 @@ final class PHUIObjectItemView extends AphrontTagView {
       case null:
         break;
       default:
-        throw new Exception(pht("Invalid effect!"));
+        throw new Exception(pht('Invalid effect!'));
     }
 
     if ($this->getGrippable()) {
       $item_classes[] = 'phui-object-item-grippable';
+    }
+
+    if ($this->getImageURI()) {
+      $item_classes[] = 'phui-object-item-with-image';
+    }
+
+    if ($this->getImageIcon()) {
+      $item_classes[] = 'phui-object-item-with-image-icon';
+    }
+
+    if ($this->fontIcon) {
+      $item_classes[] = 'phui-object-item-with-ficon';
     }
 
     return array(
@@ -288,28 +353,19 @@ final class PHUIObjectItemView extends AphrontTagView {
       $icon_list = array();
       foreach ($this->icons as $spec) {
         $icon = $spec['icon'];
+        $icon = id(new PHUIIconView())
+          ->setIconFont($icon)
+          ->addClass('phui-object-item-icon-image');
 
-        $sigil = null;
-        $meta = null;
         if (isset($spec['attributes']['tip'])) {
           $sigil = 'has-tooltip';
           $meta = array(
             'tip' => $spec['attributes']['tip'],
             'align' => 'W',
           );
+          $icon->addSigil($sigil);
+          $icon->setMetadata($meta);
         }
-
-        $sheet = idx($spec['attributes'], 'sheet', 'icons');
-
-        $icon = javelin_tag(
-          'span',
-          array(
-            'class' => 'phui-object-item-icon-image '.
-                       'sprite-'.$sheet.' '.$sheet.'-'.$icon,
-            'sigil' => $sigil,
-            'meta'  => $meta,
-          ),
-          '');
 
         $label = phutil_tag(
           'span',
@@ -469,6 +525,43 @@ final class PHUIObjectItemView extends AphrontTagView {
         $foot,
       ));
 
+    $image = null;
+    if ($this->getImageURI()) {
+      $image = phutil_tag(
+        'div',
+        array(
+          'class' => 'phui-object-item-image',
+          'style' => 'background-image: url('.$this->getImageURI().')',
+        ),
+        '');
+    } else if ($this->getImageIcon()) {
+      $image = phutil_tag(
+        'div',
+        array(
+          'class' => 'phui-object-item-image-icon',
+        ),
+        $this->getImageIcon());
+    }
+
+    if ($image && $this->href) {
+      $image = phutil_tag(
+        'a',
+        array(
+          'href' => $this->href,
+        ),
+        $image);
+    }
+
+    $ficon = null;
+    if ($this->fontIcon) {
+      $image = phutil_tag(
+        'div',
+        array(
+          'class' => 'phui-object-item-ficon',
+        ),
+        $this->fontIcon);
+    }
+
     $box = phutil_tag(
       'div',
       array(
@@ -505,19 +598,15 @@ final class PHUIObjectItemView extends AphrontTagView {
       ),
       array(
         $actions,
+        $image,
         $box,
       ));
   }
 
   private function renderFootIcon($icon, $label) {
-    require_celerity_resource('sprite-icons-css');
 
-    $icon = phutil_tag(
-      'span',
-      array(
-        'class' => 'sprite-icons icons-'.$icon,
-      ),
-      '');
+    $icon = id(new PHUIIconView())
+      ->setIconFont($icon);
 
     $label = phutil_tag(
       'span',

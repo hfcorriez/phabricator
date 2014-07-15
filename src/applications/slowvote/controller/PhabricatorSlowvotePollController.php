@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group slowvote
- */
 final class PhabricatorSlowvotePollController
   extends PhabricatorSlowvoteController {
 
@@ -41,9 +38,14 @@ final class PhabricatorSlowvotePollController
           ));
     }
 
+    $header_icon = $poll->getIsClosed() ? 'fa-ban' : 'fa-circle-o';
+    $header_name = $poll->getIsClosed() ? pht('Closed') : pht('Open');
+    $header_color = $poll->getIsClosed() ? 'dark' : 'bluegrey';
+
     $header = id(new PHUIHeaderView())
       ->setHeader($poll->getQuestion())
       ->setUser($user)
+      ->setStatus($header_icon, $header_color, $header_name)
       ->setPolicyObject($poll);
 
     $actions = $this->buildActionView($poll);
@@ -74,7 +76,6 @@ final class PhabricatorSlowvotePollController
       ),
       array(
         'title' => 'V'.$poll->getID().' '.$poll->getQuestion(),
-        'device' => true,
         'pageObjects' => array($poll->getPHID()),
       ));
   }
@@ -91,13 +92,25 @@ final class PhabricatorSlowvotePollController
       $poll,
       PhabricatorPolicyCapability::CAN_EDIT);
 
+    $is_closed = $poll->getIsClosed();
+    $close_poll_text = $is_closed ? pht('Reopen Poll') : pht('Close Poll');
+    $close_poll_icon = $is_closed ? 'fa-play-circle-o' : 'fa-ban';
+
     $view->addAction(
       id(new PhabricatorActionView())
         ->setName(pht('Edit Poll'))
-        ->setIcon('edit')
+        ->setIcon('fa-pencil')
         ->setHref($this->getApplicationURI('edit/'.$poll->getID().'/'))
         ->setDisabled(!$can_edit)
         ->setWorkflow(!$can_edit));
+
+    $view->addAction(
+      id(new PhabricatorActionView())
+        ->setName($close_poll_text)
+        ->setIcon($close_poll_icon)
+        ->setHref($this->getApplicationURI('close/'.$poll->getID().'/'))
+        ->setDisabled(!$can_edit)
+        ->setWorkflow(true));
 
     return $view;
   }
@@ -164,10 +177,6 @@ final class PhabricatorSlowvotePollController
       ? pht('Add Comment')
       : pht('Enter Deliberations');
 
-    $submit_button_name = $is_serious
-      ? pht('Add Comment')
-      : pht('Perhaps');
-
     $draft = PhabricatorDraft::newFromUserAndKey($viewer, $poll->getPHID());
 
     return id(new PhabricatorApplicationTransactionCommentView())
@@ -176,8 +185,7 @@ final class PhabricatorSlowvotePollController
       ->setDraft($draft)
       ->setHeaderText($add_comment_header)
       ->setAction($this->getApplicationURI('/comment/'.$poll->getID().'/'))
-      ->setSubmitButtonName($submit_button_name);
-
+      ->setSubmitButtonName(pht('Add Comment'));
   }
 
 }

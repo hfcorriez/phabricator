@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group search
- */
 final class PhabricatorSearchAttachController
   extends PhabricatorSearchBaseController {
 
@@ -13,6 +10,7 @@ final class PhabricatorSearchAttachController
   const ACTION_ATTACH       = 'attach';
   const ACTION_MERGE        = 'merge';
   const ACTION_DEPENDENCIES = 'dependencies';
+  const ACTION_BLOCKS       = 'blocks';
   const ACTION_EDGE         = 'edge';
 
   public function willProcessRequest(array $data) {
@@ -26,7 +24,7 @@ final class PhabricatorSearchAttachController
     $request = $this->getRequest();
     $user = $request->getUser();
 
-    $handle = id(New PhabricatorHandleQuery())
+    $handle = id(new PhabricatorHandleQuery())
       ->setViewer($user)
       ->withPHIDs(array($this->phid))
       ->executeOne();
@@ -47,6 +45,7 @@ final class PhabricatorSearchAttachController
     switch ($this->action) {
       case self::ACTION_EDGE:
       case self::ACTION_DEPENDENCIES:
+      case self::ACTION_BLOCKS:
       case self::ACTION_ATTACH:
         $edge_type = $this->getEdgeType($object_type, $attach_type);
         break;
@@ -70,13 +69,15 @@ final class PhabricatorSearchAttachController
           $txn_editor = $object->getApplicationTransactionEditor()
             ->setActor($user)
             ->setContentSourceFromRequest($request);
-          $txn_template = $object->getApplicationTransactionObject()
+          $txn_template = $object->getApplicationTransactionTemplate()
             ->setTransactionType(PhabricatorTransactions::TYPE_EDGE)
             ->setMetadataValue('edge:type', $edge_type)
             ->setNewValue(array(
               '+' => array_fuse($add_phids),
               '-' => array_fuse($rem_phids)));
-          $txn_editor->applyTransactions($object, array($txn_template));
+          $txn_editor->applyTransactions(
+            $object->getApplicationTransactionObject(),
+            array($txn_template));
 
         } else {
 
@@ -178,7 +179,7 @@ final class PhabricatorSearchAttachController
 
       $close_task = id(new ManiphestTransaction())
         ->setTransactionType(ManiphestTransaction::TYPE_STATUS)
-        ->setNewValue(ManiphestTaskStatus::STATUS_CLOSED_DUPLICATE);
+        ->setNewValue(ManiphestTaskStatus::getDuplicateStatus());
 
       $merge_comment = id(new ManiphestTransaction())
         ->setTransactionType(PhabricatorTransactions::TYPE_COMMENT)
@@ -245,17 +246,23 @@ final class PhabricatorSearchAttachController
         $instructions = null;
         break;
       case self::ACTION_MERGE:
-        $dialog_title = "Merge Duplicate Tasks";
-        $header_text = "Tasks To Merge";
+        $dialog_title = 'Merge Duplicate Tasks';
+        $header_text = 'Tasks To Merge';
         $button_text = "Merge {$noun}";
         $instructions =
-          "These tasks will be merged into the current task and then closed. ".
-          "The current task will grow stronger.";
+          'These tasks will be merged into the current task and then closed. '.
+          'The current task will grow stronger.';
         break;
       case self::ACTION_DEPENDENCIES:
-        $dialog_title = "Edit Dependencies";
-        $header_text = "Current Dependencies";
-        $button_text = "Save Dependencies";
+        $dialog_title = 'Edit Dependencies';
+        $header_text = 'Current Dependencies';
+        $button_text = 'Save Dependencies';
+        $instructions = null;
+        break;
+      case self::ACTION_BLOCKS:
+        $dialog_title = pht('Edit Blocking Tasks');
+        $header_text = pht('Current Blocking Tasks');
+        $button_text = pht('Save Blocking Tasks');
         $instructions = null;
         break;
     }

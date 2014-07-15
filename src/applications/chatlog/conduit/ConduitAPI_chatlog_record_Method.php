@@ -1,17 +1,13 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_chatlog_record_Method
-  extends ConduitAPI_chatlog_Method {
+final class ConduitAPI_chatlog_record_Method extends ConduitAPI_chatlog_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_UNSTABLE;
   }
 
   public function getMethodDescription() {
-    return "Record chatter.";
+    return 'Record chatter.';
   }
 
   public function defineParamTypes() {
@@ -25,8 +21,7 @@ final class ConduitAPI_chatlog_record_Method
   }
 
   public function defineErrorTypes() {
-    return array(
-    );
+    return array();
   }
 
   protected function execute(ConduitAPIRequest $request) {

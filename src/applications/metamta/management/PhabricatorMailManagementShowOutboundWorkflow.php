@@ -8,7 +8,7 @@ final class PhabricatorMailManagementShowOutboundWorkflow
       ->setName('show-outbound')
       ->setSynopsis('Show diagnostic details about outbound mail.')
       ->setExamples(
-        "**show-outbound** --id 1 --id 2")
+        '**show-outbound** --id 1 --id 2')
       ->setArguments(
         array(
           array(
@@ -38,7 +38,7 @@ final class PhabricatorMailManagementShowOutboundWorkflow
       $missing = array_diff_key($ids, $messages);
       if ($missing) {
         throw new PhutilArgumentUsageException(
-          "Some specified messages do not exist: ".
+          'Some specified messages do not exist: '.
           implode(', ', array_keys($missing)));
       }
     }
@@ -50,8 +50,6 @@ final class PhabricatorMailManagementShowOutboundWorkflow
       $info[] = pht('PROPERTIES');
       $info[] = pht('ID: %d', $message->getID());
       $info[] = pht('Status: %s', $message->getStatus());
-      $info[] = pht('Retry Count: %s', $message->getRetryCount());
-      $info[] = pht('Next Retry: %s', $message->getNextRetry());
       $info[] = pht('Related PHID: %s', $message->getRelatedPHID());
       $info[] = pht('Message: %s', $message->getMessage());
 

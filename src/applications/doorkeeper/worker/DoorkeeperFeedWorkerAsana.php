@@ -143,7 +143,7 @@ final class DoorkeeperFeedWorkerAsana extends DoorkeeperFeedWorker {
 
           $this->makeAsanaAPICall(
             $oauth_token,
-            "tasks/".$parent_ref->getObjectID(),
+            'tasks/'.$parent_ref->getObjectID(),
             'PUT',
             $main_data);
         } else {
@@ -524,6 +524,11 @@ final class DoorkeeperFeedWorkerAsana extends DoorkeeperFeedWorker {
       ->withUserPHIDs($all_phids)
       ->withAccountTypes(array($provider->getProviderType()))
       ->withAccountDomains(array($provider->getProviderDomain()))
+      ->requireCapabilities(
+        array(
+          PhabricatorPolicyCapability::CAN_VIEW,
+          PhabricatorPolicyCapability::CAN_EDIT,
+        ))
       ->execute();
 
     foreach ($accounts as $account) {
@@ -549,6 +554,11 @@ final class DoorkeeperFeedWorkerAsana extends DoorkeeperFeedWorker {
       ->withUserPHIDs($user_phids)
       ->withAccountTypes(array($provider->getProviderType()))
       ->withAccountDomains(array($provider->getProviderDomain()))
+      ->requireCapabilities(
+        array(
+          PhabricatorPolicyCapability::CAN_VIEW,
+          PhabricatorPolicyCapability::CAN_EDIT,
+        ))
       ->execute();
 
     // Reorder accounts in the original order.

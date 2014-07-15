@@ -23,7 +23,7 @@ final class PhabricatorFileUploadController extends PhabricatorFileController {
       }
 
       if (!$errors) {
-        return id(new AphrontRedirectResponse())->setURI($file->getViewURI());
+        return id(new AphrontRedirectResponse())->setURI($file->getInfoURI());
       }
     }
 
@@ -64,18 +64,13 @@ final class PhabricatorFileUploadController extends PhabricatorFileController {
 
     $title = pht('Upload File');
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())
-        ->setTitle(pht('Form Errors'))
-        ->setErrors($errors);
-    }
-
     $global_upload = id(new PhabricatorGlobalUploadTargetView())
+      ->setUser($user)
       ->setShowIfSupportedID($support_id);
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
@@ -86,20 +81,19 @@ final class PhabricatorFileUploadController extends PhabricatorFileController {
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 
   private function renderUploadLimit() {
     $limit = PhabricatorEnv::getEnvConfig('storage.upload-size-limit');
-    $limit = phabricator_parse_bytes($limit);
+    $limit = phutil_parse_bytes($limit);
     if ($limit) {
-      $formatted = phabricator_format_bytes($limit);
+      $formatted = phutil_format_bytes($limit);
       return 'Maximum file size: '.$formatted;
     }
 
     $doc_href = PhabricatorEnv::getDocLink(
-      'article/Configuring_File_Upload_Limits.html');
+      'Configuring File Upload Limits');
     $doc_link = phutil_tag(
       'a',
       array(

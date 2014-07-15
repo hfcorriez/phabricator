@@ -1,14 +1,23 @@
 <?php
 
 final class HarbormasterBuildStep extends HarbormasterDAO
-  implements PhabricatorPolicyInterface {
+  implements
+    PhabricatorPolicyInterface,
+    PhabricatorCustomFieldInterface {
 
+  protected $name;
   protected $buildPlanPHID;
   protected $className;
   protected $details = array();
   protected $sequence;
 
   private $buildPlan = self::ATTACHABLE;
+  private $customFields = self::ATTACHABLE;
+  private $implementation;
+
+  public static function initializeNewStep(PhabricatorUser $actor) {
+    return id(new HarbormasterBuildStep());
+  }
 
   public function getConfiguration() {
     return array(
@@ -42,24 +51,23 @@ final class HarbormasterBuildStep extends HarbormasterDAO
     return $this;
   }
 
+  public function getName() {
+    if (strlen($this->name)) {
+      return $this->name;
+    }
+
+    return $this->getStepImplementation()->getName();
+  }
+
   public function getStepImplementation() {
-    if ($this->className === null) {
-      throw new Exception("No implementation set for the given step.");
+    if ($this->implementation === null) {
+      $obj = HarbormasterBuildStepImplementation::requireImplementation(
+        $this->className);
+      $obj->loadSettings($this);
+      $this->implementation = $obj;
     }
 
-    static $implementations = null;
-    if ($implementations === null) {
-      $implementations = BuildStepImplementation::getImplementations();
-    }
-
-    $class = $this->className;
-    if (!in_array($class, $implementations)) {
-      throw new Exception(
-        "Class name '".$class."' does not extend BuildStepImplementation.");
-    }
-    $implementation = newv($class, array());
-    $implementation->loadSettings($this);
-    return $implementation;
+    return $this->implementation;
   }
 
 
@@ -83,4 +91,27 @@ final class HarbormasterBuildStep extends HarbormasterDAO
   public function describeAutomaticCapability($capability) {
     return pht('A build step has the same policies as its build plan.');
   }
+
+
+/* -(  PhabricatorCustomFieldInterface  )------------------------------------ */
+
+
+  public function getCustomFieldSpecificationForRole($role) {
+    return array();
+  }
+
+  public function getCustomFieldBaseClass() {
+    return 'HarbormasterBuildStepCustomField';
+  }
+
+  public function getCustomFields() {
+    return $this->assertAttached($this->customFields);
+  }
+
+  public function attachCustomFields(PhabricatorCustomFieldAttachment $fields) {
+    $this->customFields = $fields;
+    return $this;
+  }
+
+
 }

@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group phriction
- */
 final class PhrictionDocumentTestCase extends PhabricatorTestCase {
 
   public function testProjectSlugs() {
@@ -41,7 +38,7 @@ final class PhrictionDocumentTestCase extends PhabricatorTestCase {
       }
 
       if ($expect === null) {
-        $this->assertEqual(true, (bool)$ex, "Slug '{$slug}' is invalid.");
+        $this->assertTrue((bool)$ex, "Slug '{$slug}' is invalid.");
       } else {
         $this->assertEqual($expect, $result, "Slug '{$slug}' identifier.");
       }

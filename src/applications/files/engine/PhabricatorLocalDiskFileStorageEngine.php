@@ -6,7 +6,6 @@
  *
  * @task impl     Implementation
  * @task internal Internals
- * @group filestorage
  */
 final class PhabricatorLocalDiskFileStorageEngine
   extends PhabricatorFileStorageEngine {
@@ -30,7 +29,6 @@ final class PhabricatorLocalDiskFileStorageEngine
    * @task impl
    */
   public function writeFile($data, array $params) {
-
     $root = $this->getLocalDiskFileStorageRoot();
 
     // Generate a random, unique file path like "ab/29/1f918a9ac39201ff". We
@@ -113,7 +111,7 @@ final class PhabricatorLocalDiskFileStorageEngine
     // Make sure there's no funny business going on here. Users normally have
     // no ability to affect the content of handles, but double-check that
     // we're only accessing local storage just in case.
-    if (!preg_match('@^[a-f0-9]{2}/[a-f0-9]{2}/[a-f0-9]{28}$@', $handle)) {
+    if (!preg_match('@^[a-f0-9]{2}/[a-f0-9]{2}/[a-f0-9]{28}\z@', $handle)) {
       throw new Exception(
         "Local disk filesystem handle '{$handle}' is malformed!");
     }

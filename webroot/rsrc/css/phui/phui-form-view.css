@@ -4,7 +4,6 @@
 
 .phui-form-view {
   padding: 16px;
-  background: #fff;
 }
 
 .phui-form-view.phui-form-full-width {
@@ -49,6 +48,20 @@
   margin-right: 0%;
   width: 100%;
 }
+
+.aphront-form-input *::-webkit-input-placeholder {
+  color:{$greytext} !important;
+}
+
+.aphront-form-input *::-moz-placeholder {
+  color:{$greytext} !important;
+  opacity: 1; /* Firefox nudges the opacity to 0.4 */
+}
+
+.aphront-form-input *:-ms-input-placeholder  {
+  color:{$greytext} !important;
+}
+
 
 .aphront-form-error {
   width: 18%;
@@ -109,9 +122,10 @@
 }
 
 .phui-form-control-multi-submit input,
+.phui-form-control-multi-submit button,
 .phui-form-control-multi-submit a {
   float: right;
-  margin: 0.5em 0 0em 2%;
+  margin: 4px 0 0 8px;
   width: auto;
 }
 
@@ -432,4 +446,32 @@ table.aphront-form-control-checkbox-layout th {
   border-bottom: 1px solid {$lightbluetext};
   padding: 16px 0 4px;
   margin-bottom: 4px;
+}
+
+.device-desktop .text-with-submit-control-outer-bounds {
+  position: relative;
+}
+
+.device-desktop .text-with-submit-control-text-bounds {
+  position: absolute;
+  left: 0;
+  right: 184px;
+}
+
+.device-desktop .text-with-submit-control-submit-bounds {
+  text-align: right;
+}
+
+.device-desktop .text-with-submit-control-submit {
+  width: 180px;
+}
+
+
+.aphront-form-choose-table td {
+  vertical-align: middle;
+  padding: 4px 0;
+}
+
+.aphront-form-choose-table .aphront-form-choose-button-cell {
+  padding: 4px 8px;
 }

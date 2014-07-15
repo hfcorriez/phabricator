@@ -7,7 +7,7 @@
 }
 
 .phabricator-remarkup p {
-  margin: 0 0 1em;
+  margin: 0 0 12px;
 }
 
 .phabricator-remarkup p:last-child {
@@ -15,61 +15,80 @@
 }
 
 .phabricator-remarkup .remarkup-code-block {
-  margin: 1em 2em;
+  margin: 12px;
   white-space: pre;
   font-family: "Monaco", monospace;
   font-size: 10px;
 }
 
 .phabricator-remarkup .remarkup-code-header {
-  padding: .25em 1em;
-  background: #edead7;
-  color: {$darkgreytext};
+  padding: 6px 8px;
+  background: {$lightyellow};
+  color: rgba(0,0,0,.75);
+  font-weight: bold;
+  display: inline-block;
+  border-top: 1px solid {$yellow};
+  border-left: 1px solid {$yellow};
+  border-right: 1px solid {$yellow};
+  margin-bottom: -1px;
 }
 
 .phabricator-remarkup .remarkup-code-block pre {
-  background: #fdfae7;
-  border: 1px solid #f5e178;
+  background: {$lightyellow};
+  border: 1px solid {$yellow};
   display: block;
   color: #000000;
   overflow: auto;
-  padding: .5em 1em;
+  padding: 8px;
   font-family: "Monaco", monospace;
 }
 
 .phabricator-remarkup pre.remarkup-counterexample {
-  border: 1px solid #aa0000;
-  background-color: #ffaaaa;
+  border: 1px solid {$red};
+  background-color: {$lightred};
 }
 
-.phabricator-remarkup tt {
+.phabricator-remarkup tt.remarkup-monospaced {
   color: #333333;
   background: #ebebeb;
-  padding: 0 .25em;
+  padding: 0 4px;
   white-space: pre-wrap;
 }
 
 /* NOTE: You can currently produce this with [[link | `name`]]. Restore the
    link color. */
-.phabricator-remarkup a tt {
+.phabricator-remarkup a tt.remarkup-monospaced {
   color: #18559d;
 }
 
-.phabricator-remarkup ul {
+.phabricator-remarkup ul.remarkup-list {
   list-style: disc;
-  margin: 1em 0 1em 3em;
+  margin: 12px 0 12px 30px;
 }
 
-.phabricator-remarkup ol {
+.phabricator-remarkup ol.remarkup-list {
   list-style: decimal;
-  margin: 1em 0 1em 3em;
+  margin: 12px 0 12px 30px;
 }
 
-.phabricator-remarkup ul ol,
-.phabricator-remarkup ul ul,
-.phabricator-remarkup ol ol,
-.phabricator-remarkup ol ul {
-  margin: .25em 0 .25em 2em;
+.phabricator-remarkup .remarkup-list-with-checkmarks {
+  list-style: none;
+  margin-left: 18px;
+}
+
+.phabricator-remarkup .remarkup-list-with-checkmarks input {
+  margin-right: 2px;
+}
+
+.phabricator-remarkup .remarkup-list-with-checkmarks .remarkup-checked-item {
+  color: {$greytext};
+}
+
+.phabricator-remarkup ul.remarkup-list ol.remarkup-list,
+.phabricator-remarkup ul.remarkup-list ul.remarkup-list,
+.phabricator-remarkup ol.remarkup-list ol.remarkup-list,
+.phabricator-remarkup ol.remarkup-list ul.remarkup-list {
+  margin: 4px 0 4px 24px;
 }
 
 .phabricator-remarkup li.phantom-item,
@@ -77,70 +96,84 @@
   list-style-type: none;
 }
 
-.phabricator-remarkup h1:first-child,
-.phabricator-remarkup h2:first-child,
-.phabricator-remarkup h3:first-child,
-.phabricator-remarkup h4:first-child,
-.phabricator-remarkup h5:first-child,
-.phabricator-remarkup h6:first-child {
+.phabricator-remarkup h1.remarkup-header:first-child,
+.phabricator-remarkup h2.remarkup-header:first-child,
+.phabricator-remarkup h3.remarkup-header:first-child,
+.phabricator-remarkup h4.remarkup-header:first-child,
+.phabricator-remarkup h5.remarkup-header:first-child,
+.phabricator-remarkup h6.remarkup-header:first-child {
   margin-top: 0;
 }
 
-.phabricator-remarkup h1:last-child,
-.phabricator-remarkup h2:last-child,
-.phabricator-remarkup h3:last-child,
-.phabricator-remarkup h4:last-child,
-.phabricator-remarkup h5:last-child,
-.phabricator-remarkup h6:last-child {
+.phabricator-remarkup h1.remarkup-header:last-child,
+.phabricator-remarkup h2.remarkup-header:last-child,
+.phabricator-remarkup h3.remarkup-header:last-child,
+.phabricator-remarkup h4.remarkup-header:last-child,
+.phabricator-remarkup h5.remarkup-header:last-child,
+.phabricator-remarkup h6.remarkup-header:last-child {
   margin-bottom: 0;
 }
 
-.phabricator-remarkup h1 {
+.phabricator-remarkup h1.remarkup-header {
   font-size: 1.625em;
   line-height: 1.625em;
-  margin: .8em 0;
+  margin: 8px 0;
 }
 
-.phabricator-remarkup h2 {
+.phabricator-remarkup h2.remarkup-header {
   font-size: 1.5em;
   line-height: 1.5em;
-  margin: .75em 0;
+  margin: 8px 0;
 }
 
-.phabricator-remarkup h3 {
+.phabricator-remarkup h3.remarkup-header {
   font-size: 1.375em;
   line-height: 1.375em;
-  margin: .69em 0;
+  margin: 8px 0;
 }
 
-.phabricator-remarkup h4 {
+.phabricator-remarkup h4.remarkup-header {
   font-size: 1.25em;
   line-height: 1.25em;
-  margin: .63em 0;
+  margin: 8px 0;
 }
 
-.phabricator-remarkup h5 {
+.phabricator-remarkup h5.remarkup-header {
   font-size: 1.125em;
   line-height: 1.125em;
-  margin: .56em 0;
+  margin: 4px 0;
 }
 
-.phabricator-remarkup h6 {
+.phabricator-remarkup h6.remarkup-header {
   font-size: 1em;
   line-height: 1em;
-  margin: .5em 0;
+  margin: 4px 0;
 }
 
 .phabricator-remarkup blockquote {
-  border-left: 1px solid #AAAAAA;
-  color:       #333333;
+  border-left: 3px solid {$lightbluetext};
+  color: {$bluetext};
   font-style:  italic;
-  margin:      .5em 0em;
-  padding:     .25em 1em;
+  margin: 4px 0 12px 0;
+  padding: 8px 12px;
+  background-color: #F8F9FC;
 }
 
 .phabricator-remarkup blockquote em {
   font-style: normal;
+}
+
+.phabricator-remarkup blockquote div.remarkup-reply-head {
+  font-style: normal;
+  padding-bottom: 4px;
+}
+
+.phabricator-remarkup blockquote div.remarkup-reply-head
+  .phui-tag-core {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  color: {$darkbluetext};
 }
 
 .phabricator-remarkup img.remarkup-proxy-image {
@@ -172,25 +205,45 @@
 }
 
 .phabricator-remarkup .remarkup-note {
-  margin: 1em 1.5em;
-  padding: 0.5em 1em;
-  border: 1px solid #ddddff;
-  background: #f3f3ff;
+  margin: 16px 0;
+  padding: 12px;
+  border-left: 3px solid {$blue};
+  background: {$lightblue};
+}
+
+.phabricator-remarkup .remarkup-warning {
+  margin: 16px 0;
+  padding: 12px;
+  border-left: 3px solid {$yellow};
+  background: {$lightyellow};
+}
+
+.phabricator-remarkup .remarkup-important {
+  margin: 16px 0;
+  padding: 12px;
+  border-left: 3px solid {$red};
+  background: {$lightred};
+}
+
+.phabricator-remarkup .remarkup-note-word {
+  font-weight: bold;
+  color: {$darkbluetext};
 }
 
 .phabricator-remarkup-toc {
   float: right;
-  border: 1px solid #d7d7d7;
-  background: #f7f7f7;
-  padding: 4px 12px;
+  border: 1px solid {$lightblueborder};
+  background: {$lightgreybackground};
+  padding: 8px;
   width: 180px;
-  margin: 0 0 5px 10px;
+  margin: 0 0 4px 8px;
 }
 
 .phabricator-remarkup-toc-header {
-  font-size: 11px;
-  color: {$greytext};
-  border-bottom: 1px solid #d7d7d7;
+  font-size: 12px;
+  line-height: 12px;
+  color: {$darkbluetext};
+  font-weight: bold;
   margin-bottom: 4px;
 }
 
@@ -244,11 +297,19 @@
   box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.20);
 }
 
+.phabricator-remarkup-embed-image-full {
+  display: inline-block;
+}
+
+.phabricator-remarkup-embed-image-full img {
+  max-width: 100%;
+}
+
 .phabricator-remarkup table.remarkup-table {
-  border-collapse:  separate;
-  border-spacing:   1px;
-  background:       #d3d3d3;
-  margin:           1em;
+  border-collapse: separate;
+  border-spacing: 1px;
+  background: #d3d3d3;
+  margin: 12px 0;
 }
 
 .phabricator-remarkup table.remarkup-table th {
@@ -266,7 +327,7 @@
   border-left-color: {$blueborder};
   border-right-color: {$blueborder};
   border-bottom-color: {$blueborder};
-  border-top-color: {$lightblueborder};
+  border-top-color: {$thinblueborder};
   border-radius: 0;
 
   /* Prevent Safari and Chrome users from dragging the textarea any wider,
@@ -279,9 +340,7 @@
 }
 
 .remarkup-assist-bar {
-  height: 27px;
-  padding: 0 2px;
-
+  height: 26px;
   border-width: 1px 1px 0;
   border-style: solid;
   border-top-color: {$blueborder};
@@ -294,24 +353,20 @@
 
 .remarkup-assist-button {
   display: block;
-  padding: 3px;
-  margin: 2px 1px;
+  padding: 5px;
   float: left;
-
-  border: 1px solid transparent;
-  border-radius: 2px;
 }
 
 .remarkup-assist-button:hover {
-  background: #f7f7f7;
-  border-color: #c6c6c6;
-  box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.10);
+  background-color: rgba(100,100,100,.15);
+}
+
+.remarkup-assist-button:hover .phui-icon-view.phui-font-fa {
+  color: {$darkbluetext};
 }
 
 .remarkup-assist-button:active {
   outline: none;
-  background: #f3f3f3;
-  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.10);
 }
 
 .remarkup-assist-button:focus {
@@ -344,10 +399,11 @@
 }
 
 .remarkup-assist {
-  display: block;
   width: 14px;
   height: 14px;
   overflow: hidden;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .remarkup-assist-right {
@@ -374,7 +430,7 @@
 
 .remarkup-control-fullscreen-mode textarea.remarkup-assist-textarea {
   position: absolute;
-  top: 26px;
+  top: 27px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -387,25 +443,4 @@
 .phabricator-image-macro-hero {
   margin: auto;
   max-width: 95%;
-}
-
-/* phabricator-remarkup-dark assumes a dark backround with light text,
-   so here are custom rules to override remarkup defaults. */
-
-div.phabricator-remarkup-dark blockquote {
-  color: {$lightgreytext};
-}
-
-div.phabricator-remarkup-dark tt {
-  color: #EEE;
-  background: {$darkgreytext};
-}
-
-div.phabricator-remarkup-dark .remarkup-note,
-div.phabricator-remarkup-dark table {
-  color: #000;
-}
-
-div.phabricator-remarkup-dark hr {
-  border-color: #555;
 }

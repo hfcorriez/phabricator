@@ -1,11 +1,9 @@
 <?php
 
-/**
- * @group repository
- */
 final class PhabricatorRepositoryArcanistProject
   extends PhabricatorRepositoryDAO
-  implements PhabricatorPolicyInterface {
+  implements PhabricatorPolicyInterface,
+  PhabricatorDestructableInterface {
 
   protected $name;
   protected $repositoryID;
@@ -88,6 +86,17 @@ final class PhabricatorRepositoryArcanistProject
 
   public function describeAutomaticCapability($capability) {
     return null;
+  }
+
+
+/* -(  PhabricatorDestructableInterface  )----------------------------------- */
+
+  public function destroyObjectPermanently(
+    PhabricatorDestructionEngine $engine) {
+
+    $this->openTransaction();
+    $this->delete();
+    $this->saveTransaction();
   }
 
 }

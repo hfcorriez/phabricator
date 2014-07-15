@@ -1,17 +1,13 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_chatlog_query_Method
-  extends ConduitAPI_chatlog_Method {
+final class ConduitAPI_chatlog_query_Method extends ConduitAPI_chatlog_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_UNSTABLE;
   }
 
   public function getMethodDescription() {
-    return "Retrieve chatter.";
+    return 'Retrieve chatter.';
   }
 
   public function defineParamTypes() {
@@ -30,7 +26,6 @@ final class ConduitAPI_chatlog_query_Method
   }
 
   protected function execute(ConduitAPIRequest $request) {
-
     $query = new PhabricatorChatLogQuery();
 
     $channel_ids = $request->getValue('channelIDs');

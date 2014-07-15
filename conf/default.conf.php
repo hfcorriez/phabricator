@@ -299,13 +299,6 @@ return array(
   'metamta.mail-adapter'        =>
     'PhabricatorMailImplementationPHPMailerLiteAdapter',
 
-  // When email is sent, try to hand it off to the MTA immediately instead of
-  // queueing it for delivery by the daemons. If you are running the Phabricator
-  // daemons with "phd start", you should disable this to provide a (sometimes
-  // substantial) performance boost. It's on by default to make setup and
-  // configuration a little easier.
-  'metamta.send-immediately'    => true,
-
   // When email is sent, what format should Phabricator use for user's
   // email addresses? Valid values are:
   //  - 'short' - 'gwashington <gwashington@example.com>'
@@ -550,15 +543,6 @@ return array(
 
 // -- Auth ------------------------------------------------------------------ //
 
-  // Maximum number of simultaneous web sessions each user is permitted to have.
-  // Setting this to "1" will prevent a user from logging in on more than one
-  // browser at the same time.
-  'auth.sessions.web'           => 5,
-
-  // Maximum number of simultaneous Conduit sessions each user is permitted
-  // to have.
-  'auth.sessions.conduit'       => 5,
-
   // If true, email addresses must be verified (by clicking a link in an
   // email) before a user can login. By default, verification is optional
   // unless 'auth.email-domains' is nonempty (see below).
@@ -645,36 +629,6 @@ return array(
   // reloading, and generally make development easier. This option should not
   // be enabled in production.
   'phabricator.developer-mode' => false,
-
-  // When users write comments which have URIs, they'll be automatically linked
-  // if the protocol appears in this set. This whitelist is primarily to prevent
-  // security issues like javascript:// URIs.
-  'uri.allowed-protocols' => array(
-    'http'  => true,
-    'https' => true,
-  ),
-
-  // Tokenizers are UI controls which let the user select other users, email
-  // addresses, project names, etc., by typing the first few letters and having
-  // the control autocomplete from a list. They can load their data in two ways:
-  // either in a big chunk up front, or as the user types. By default, the data
-  // is loaded in a big chunk. This is simpler and performs better for small
-  // datasets. However, if you have a very large number of users or projects,
-  // (in the ballpark of more than a thousand), loading all that data may become
-  // slow enough that it's worthwhile to query on demand instead. This makes
-  // the typeahead slightly less responsive but overall performance will be much
-  // better if you have a ton of stuff. You can figure out which setting is
-  // best for your install by changing this setting and then playing with a
-  // user tokenizer (like the user selectors in Maniphest or Differential) and
-  // seeing which setting loads faster and feels better.
-  'tokenizer.ondemand'          => false,
-
-  // By default, Phabricator includes some silly nonsense in the UI, such as
-  // a submit button called "Clowncopterize" in Differential and a call to
-  // "Leap Into Action". If you'd prefer more traditional UI strings like
-  // "Submit", you can set this flag to disable most of the jokes and easter
-  // eggs.
-  'phabricator.serious-business' => false,
 
   // Should Phabricator show beta applications on the homepage
   'phabricator.show-beta-applications' => false,
@@ -818,30 +772,12 @@ return array(
 
 // -- Differential ---------------------------------------------------------- //
 
-  'differential.revision-custom-detail-renderer'  => null,
-
   // List of file regexps where whitespace is meaningful and should not
   // use 'ignore-all' by default
   'differential.whitespace-matters' => array(
     '/\.py$/',
     '/\.l?hs$/',
   ),
-
-  'differential.field-selector' => 'DifferentialDefaultFieldSelector',
-
-  // Differential can show "Host" and "Path" fields on revisions, with
-  // information about the machine and working directory where the
-  // change came from. These fields are disabled by default because they may
-  // occasionally have sensitive information; you can set this to true to
-  // enable them.
-  'differential.show-host-field'  => false,
-
-  // Differential has a required "Test Plan" field by default, which requires
-  // authors to fill out information about how they verified the correctness of
-  // their changes when sending code for review. If you'd prefer not to use
-  // this field, you can disable it here. You can also make it optional
-  // (instead of required) below.
-  'differential.show-test-plan-field' => true,
 
   // Differential has a required "Test Plan" field by default. You can make it
   // optional by setting this to false. You can also completely remove it above,
@@ -862,7 +798,7 @@ return array(
     // '#/autobuilt/#',
   ),
 
-  // If you set this to true, users can accept their own revisions.  This action
+  // If you set this to true, users can accept their own revisions. This action
   // is disabled by default because it's most likely not a behavior you want,
   // but it proves useful if you are working alone on a project and want to make
   // use of all of differential's features.
@@ -875,9 +811,13 @@ return array(
   // only the submitter can close a revision.
   'differential.always-allow-close' => false,
 
+  // If you set this to true, any user can abandon any revision. If false, only
+  // the submitter can abandon a revision.
+  'differential.always-allow-abandon' => false,
+
   // If you set this to true, any user can reopen a revision so long as it has
   // been closed.  This can be useful if a revision is accidentally closed or
-  // if a developer changes his or her mind after closing a revision.  If it is
+  // if a developer changes his or her mind after closing a revision. If it is
   // false, reopening is not allowed.
   'differential.allow-reopen' => false,
 
@@ -974,7 +914,8 @@ return array(
   // task will be created for each uri that posts the story data to the uri.
   // Daemons automagically retry failures 100 times, waiting $fail_count * 60s
   // between each subsequent failure. Be sure to keep the daemon console
-  // (/daemon/) open while developing and testing your end points.
+  // (/daemon/) open while developing and testing your end points. You may need
+  // to restart your daemons to start sending http requests.
   //
   // NOTE: URIs are not validated, the URI must return http status 200 within
   // 30 seconds, and no permission checks are performed.
@@ -1028,7 +969,7 @@ return array(
 
   // Minify static resources by removing whitespace and comments. You should
   // enable this in production, but disable it in development.
-  'celerity.minify' => false,
+  'celerity.minify' => true,
 
   // You can respond to various application events by installing listeners,
   // which will receive callbacks when interesting things occur. Specify a list
@@ -1055,6 +996,7 @@ return array(
     'bash' => 'Bash Scripting',
     'brainfuck' => 'Brainf*ck',
     'c' => 'C',
+    'coffee-script' => 'CoffeeScript',
     'cpp' => 'C++',
     'css' => 'CSS',
     'd' => 'D',
@@ -1062,14 +1004,18 @@ return array(
     'django' => 'Django Templating',
     'erb' => 'Embedded Ruby/ERB',
     'erlang' => 'Erlang',
+    'go' => 'Golang',
+    'groovy' => 'Groovy',
     'haskell' => 'Haskell',
     'html' => 'HTML',
     'java' => 'Java',
     'js' => 'Javascript',
+    'json' => 'JSON',
     'mysql' => 'MySQL',
     'objc' => 'Objective-C',
     'perl' => 'Perl',
     'php' => 'PHP',
+    'puppet' => 'Puppet',
     'rest' => 'reStructuredText',
     'text' => 'Plain Text',
     'python' => 'Python',
@@ -1077,6 +1023,7 @@ return array(
     'remarkup' => 'Remarkup',
     'ruby' => 'Ruby',
     'xml' => 'XML',
+    'yaml' => 'YAML',
   ),
 
   // This is an override list of regular expressions which allows you to choose
@@ -1098,6 +1045,7 @@ return array(
     // '@\\.([^.]+)\\.bak$@' => 1,
 
     '@\.arcconfig$@' => 'js',
+    '@\.arclint$@' => 'js',
     '@\.divinerconfig$@' => 'js',
   ),
 

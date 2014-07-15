@@ -4,9 +4,36 @@
  *           javelin-stratcom
  *           javelin-workflow
  *           javelin-dom
+ *           javelin-router
  */
 
 JX.behavior('workflow', function() {
+
+  // Queue a workflow at elevated priority. The user just clicked or submitted
+  // something, so service this before loading background content.
+  var queue = function(workflow) {
+    var routable = workflow.getRoutable()
+      .setPriority(2000)
+      .setType('workflow');
+
+    JX.Router.getInstance().queue(routable);
+  };
+
+  // If a user clicks an alternate submit button, make sure it gets marshalled
+  // into the workflow.
+  JX.Stratcom.listen(
+    'click',
+    ['workflow', 'tag:form', 'alternate-submit-button'],
+    function(e) {
+      e.prevent();
+
+      var target = e.getNode('alternate-submit-button');
+      var form = e.getNode('tag:form');
+      var button = {};
+      button[target.name] = target.value || true;
+
+      JX.DOM.invoke(form, 'didSyntheticSubmit', {extra: button});
+    });
 
   // Listen for both real and synthetic submit events.
   JX.Stratcom.listen(
@@ -17,11 +44,15 @@ JX.behavior('workflow', function() {
         return;
       }
 
+      var data = e.getData();
+      var extra = (data && data.extra) || {};
+
       // NOTE: We activate workflow if any parent node has the "workflow" sigil,
       // not just the <form /> itself.
 
       e.prevent();
-      JX.Workflow.newFromForm(e.getNode('tag:form')).start();
+
+      queue(JX.Workflow.newFromForm(e.getNode('tag:form'), extra));
     });
 
   JX.Stratcom.listen(
@@ -51,7 +82,7 @@ JX.behavior('workflow', function() {
       }
 
       e.prevent();
-      JX.Workflow.newFromLink(e.getNode('tag:a')).start();
+      queue(JX.Workflow.newFromLink(e.getNode('tag:a')));
     });
 
 });

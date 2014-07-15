@@ -18,31 +18,31 @@ final class PHUIListExample extends PhabricatorUIExample {
     $action1 = id(new PHUIListItemView())
       ->setName('Edit Document')
       ->setHref('#')
-      ->setIcon('edit')
+      ->setIcon('fa-pencil')
       ->setType(PHUIListItemView::TYPE_LINK);
 
     $action2 = id(new PHUIListItemView())
       ->setName('Move Document')
       ->setHref('#')
-      ->setIcon('move')
+      ->setIcon('fa-arrows')
       ->setType(PHUIListItemView::TYPE_LINK);
 
     $action3 = id(new PHUIListItemView())
       ->setName('Delete Document')
       ->setHref('#')
-      ->setIcon('delete')
+      ->setIcon('fa-times')
       ->setType(PHUIListItemView::TYPE_LINK);
 
     $action4 = id(new PHUIListItemView())
       ->setName('View History')
       ->setHref('#')
-      ->setIcon('history')
+      ->setIcon('fa-list')
       ->setType(PHUIListItemView::TYPE_LINK);
 
     $action5 = id(new PHUIListItemView())
       ->setName('Subscribe')
       ->setHref('#')
-      ->setIcon('check')
+      ->setIcon('fa-plus-circle')
       ->setType(PHUIListItemView::TYPE_LINK);
 
     $actionmenu = id(new PHUIListView())
@@ -125,7 +125,7 @@ final class PHUIListExample extends PhabricatorUIExample {
     /* Top Navigation */
 
     $home = id(new PHUIListItemView())
-      ->setIcon('home')
+      ->setIcon('fa-home')
       ->setHref('#')
       ->setType(PHUIListItemView::TYPE_ICON);
 
@@ -211,35 +211,35 @@ final class PHUIListExample extends PhabricatorUIExample {
           ->appendChild($unstyled)
           ->addMargin(PHUI::MARGIN_MEDIUM)
           ->addPadding(PHUI::PADDING_SMALL)
-          ->setShadow(true));
+          ->setBorder(true));
 
     $layout2 =
       array(
         id(new PHUIBoxView())
           ->appendChild($sidenav)
           ->addMargin(PHUI::MARGIN_MEDIUM)
-          ->setShadow(true));
+          ->setBorder(true));
 
     $layout3 =
       array(
         id(new PHUIBoxView())
           ->appendChild($topnav)
           ->addMargin(PHUI::MARGIN_MEDIUM)
-          ->setShadow(true));
+          ->setBorder(true));
 
     $layout4 =
       array(
         id(new PHUIBoxView())
           ->appendChild($actionmenu)
           ->addMargin(PHUI::MARGIN_MEDIUM)
-          ->setShadow(true));
+          ->setBorder(true));
 
     $layout5 =
       array(
         id(new PHUIBoxView())
           ->appendChild($statustabs)
           ->addMargin(PHUI::MARGIN_MEDIUM)
-          ->setShadow(true));
+          ->setBorder(true));
 
     $head1 = id(new PHUIHeaderView())
       ->setHeader(pht('Unstyled'));

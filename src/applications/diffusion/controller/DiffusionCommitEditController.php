@@ -45,7 +45,7 @@ final class DiffusionCommitEditController extends DiffusionController {
       $editor->save();
 
       id(new PhabricatorSearchIndexer())
-        ->indexDocumentByPHID($commit->getPHID());
+        ->queueDocumentForIndexing($commit->getPHID());
 
       return id(new AphrontRedirectResponse())
       ->setURI('/r'.$callsign.$commit->getCommitIdentifier());
@@ -70,7 +70,7 @@ final class DiffusionCommitEditController extends DiffusionController {
               'sigil'       => 'project-create',
             ),
             pht('Create New Project')))
-        ->setDatasource('/typeahead/common/projects/'));;
+        ->setDatasource(new PhabricatorProjectDatasource()));
 
     Javelin::initBehavior('project-create', array(
       'tokenizerID' => $tokenizer_id,
@@ -91,7 +91,6 @@ final class DiffusionCommitEditController extends DiffusionController {
       ),
       array(
         'title' => $page_title,
-        'device' => true,
       ));
   }
 

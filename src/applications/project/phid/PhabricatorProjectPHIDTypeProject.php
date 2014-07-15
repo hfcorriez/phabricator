@@ -12,6 +12,14 @@ final class PhabricatorProjectPHIDTypeProject extends PhabricatorPHIDType {
     return pht('Project');
   }
 
+  public function getPHIDTypeApplicationClass() {
+    return 'PhabricatorApplicationProject';
+  }
+
+  public function getTypeIcon() {
+    return 'fa-briefcase bluegrey';
+  }
+
   public function newObject() {
     return new PhabricatorProject();
   }
@@ -21,7 +29,8 @@ final class PhabricatorProjectPHIDTypeProject extends PhabricatorPHIDType {
     array $phids) {
 
     return id(new PhabricatorProjectQuery())
-      ->withPHIDs($phids);
+      ->withPHIDs($phids)
+      ->needImages(true);
   }
 
   public function loadHandles(
@@ -34,18 +43,24 @@ final class PhabricatorProjectPHIDTypeProject extends PhabricatorPHIDType {
 
       $name = $project->getName();
       $id = $project->getID();
+      $slug = $project->getPrimarySlug();
 
       $handle->setName($name);
-      $handle->setObjectName('#'.rtrim($project->getPhrictionSlug(), '/'));
-      $handle->setURI("/project/view/{$id}/");
+      $handle->setObjectName('#'.$slug);
+      $handle->setURI("/tag/{$slug}/");
+      $handle->setImageURI($project->getProfileImageURI());
+      $handle->setIcon($project->getIcon());
+      $handle->setTagColor($project->getColor());
+
+      if ($project->isArchived()) {
+        $handle->setStatus(PhabricatorObjectHandleStatus::STATUS_CLOSED);
+      }
     }
   }
 
   public static function getProjectMonogramPatternFragment() {
-    // NOTE: This explicitly does not match strings which contain only
-    // digits, because digit strings like "#123" are used to reference tasks at
-    // Facebook and are somewhat conventional in general.
-    return '[^\s.!,:;]*[^\s\d.!,:;]+[^\s.!,:;]*';
+    // NOTE: See some discussion in ProjectRemarkupRule.
+    return '[^\s,#]+';
   }
 
   public function canLoadNamedObject($name) {
@@ -67,14 +82,17 @@ final class PhabricatorProjectPHIDTypeProject extends PhabricatorPHIDType {
 
     $projects = id(new PhabricatorProjectQuery())
       ->setViewer($query->getViewer())
-      ->withPhrictionSlugs(array_keys($map))
+      ->withSlugs(array_keys($map))
+      ->needSlugs(true)
       ->execute();
 
     $result = array();
     foreach ($projects as $project) {
-      $slugs = array($project->getPhrictionSlug());
-      foreach ($slugs as $slug) {
-        foreach ($map[$slug] as $original) {
+      $slugs = $project->getSlugs();
+      $slug_strs = mpull($slugs, 'getSlug');
+      foreach ($slug_strs as $slug) {
+        $slug_map = idx($map, $slug, array());
+        foreach ($slug_map as $original) {
           $result[$original] = $project;
         }
       }
@@ -90,7 +108,7 @@ final class PhabricatorProjectPHIDTypeProject extends PhabricatorPHIDType {
     // should not. normalize() strips out most punctuation and leads to
     // excessively aggressive matches.
 
-    return phutil_utf8_strtolower($slug).'/';
+    return phutil_utf8_strtolower($slug);
   }
 
 

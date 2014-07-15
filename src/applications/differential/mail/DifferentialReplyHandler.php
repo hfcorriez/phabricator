@@ -1,12 +1,17 @@
 <?php
 
+/**
+ * NOTE: Do not extend this!
+ *
+ * @concrete-extensible
+ */
 class DifferentialReplyHandler extends PhabricatorMailReplyHandler {
 
   private $receivedMail;
 
   public function validateMailReceiver($mail_receiver) {
     if (!($mail_receiver instanceof DifferentialRevision)) {
-      throw new Exception("Receiver is not a DifferentialRevision!");
+      throw new Exception('Receiver is not a DifferentialRevision!');
     }
   }
 
@@ -66,7 +71,7 @@ class DifferentialReplyHandler extends PhabricatorMailReplyHandler {
       $text .= implode(', ', $modified_commands);
     }
 
-    $text .= ".";
+    $text .= '.';
 
     return $text;
   }
@@ -100,11 +105,11 @@ class DifferentialReplyHandler extends PhabricatorMailReplyHandler {
     // unrecognized commands will be parsed as part of the comment.
     $command = DifferentialAction::ACTION_COMMENT;
     $supported_commands = $this->getSupportedCommands();
-    $regex = "/\A\n*!(" . implode('|', $supported_commands) . ")\n*/";
+    $regex = "/\A\n*!(".implode('|', $supported_commands).")\n*/";
     $matches = array();
     if (preg_match($regex, $body, $matches)) {
       $command = $matches[1];
-      $body = trim(str_replace('!' . $command, '', $body));
+      $body = trim(str_replace('!'.$command, '', $body));
     }
 
     $actor = $this->getActor();
@@ -114,67 +119,57 @@ class DifferentialReplyHandler extends PhabricatorMailReplyHandler {
 
     switch ($command) {
       case 'unsubscribe':
-        $this->unsubscribeUser($this->getMailReceiver(), $actor);
+        id(new PhabricatorSubscriptionsEditor())
+          ->setObject($this->getMailReceiver())
+          ->unsubscribe(array($actor->getPHID()))
+          ->save();
         // TODO: Send the user a confirmation email?
         return null;
     }
 
     $body = $this->enhanceBodyWithAttachments($body, $attachments);
 
-    try {
-      $editor = new DifferentialCommentEditor(
-        $this->getMailReceiver(),
-        $command);
-      $editor->setActor($actor);
-      $editor->setExcludeMailRecipientPHIDs(
-        $this->getExcludeMailRecipientPHIDs());
+    $xactions = array();
 
-      // NOTE: We have to be careful about this because Facebook's
-      // implementation jumps straight into handleAction() and will not have
-      // a PhabricatorMetaMTAReceivedMail object.
-      if ($this->receivedMail) {
-        $content_source = PhabricatorContentSource::newForSource(
-          PhabricatorContentSource::SOURCE_EMAIL,
-          array(
-            'id' => $this->receivedMail->getID(),
-          ));
-        $editor->setContentSource($content_source);
-        $editor->setParentMessageID($this->receivedMail->getMessageID());
-      }
-      $editor->setMessage($body);
-      $comment = $editor->save();
-
-      return $comment->getID();
-
-    } catch (Exception $ex) {
-      if ($this->receivedMail) {
-        $error_body = $this->receivedMail->getRawTextBody();
-      } else {
-        $error_body = $body;
-      }
-      $exception_mail = new DifferentialExceptionMail(
-        $this->getMailReceiver(),
-        $ex,
-        $error_body);
-
-      $exception_mail->setActor($this->getActor());
-      $exception_mail->setToPHIDs(array($this->getActor()->getPHID()));
-      $exception_mail->send();
-
-      throw $ex;
+    if ($command && ($command != DifferentialAction::ACTION_COMMENT)) {
+      $xactions[] = id(new DifferentialTransaction())
+        ->setTransactionType(DifferentialTransaction::TYPE_ACTION)
+        ->setNewValue($command);
     }
+
+    if (strlen($body)) {
+      $xactions[] = id(new DifferentialTransaction())
+        ->setTransactionType(PhabricatorTransactions::TYPE_COMMENT)
+        ->attachComment(
+          id(new DifferentialTransactionComment())
+            ->setContent($body));
+    }
+
+    $editor = id(new DifferentialTransactionEditor())
+      ->setActor($actor)
+      ->setExcludeMailRecipientPHIDs($this->getExcludeMailRecipientPHIDs())
+      ->setContinueOnMissingFields(true)
+      ->setContinueOnNoEffect(true);
+
+    // NOTE: We have to be careful about this because Facebook's
+    // implementation jumps straight into handleAction() and will not have
+    // a PhabricatorMetaMTAReceivedMail object.
+    if ($this->receivedMail) {
+      $content_source = PhabricatorContentSource::newForSource(
+        PhabricatorContentSource::SOURCE_EMAIL,
+        array(
+          'id' => $this->receivedMail->getID(),
+        ));
+      $editor->setContentSource($content_source);
+      $editor->setParentMessageID($this->receivedMail->getMessageID());
+    } else {
+      $content_source = PhabricatorContentSource::newForSource(
+        PhabricatorContentSource::SOURCE_LEGACY,
+        array());
+      $editor->setContentSource($content_source);
+    }
+
+    $editor->applyTransactions($this->getMailReceiver(), $xactions);
   }
-
-  private function unsubscribeUser(
-    DifferentialRevision $revision,
-    PhabricatorUser $user) {
-
-    $revision->loadRelationships();
-    DifferentialRevisionEditor::removeCCAndUpdateRevision(
-      $revision,
-      $user->getPHID(),
-      $user);
-  }
-
 
 }

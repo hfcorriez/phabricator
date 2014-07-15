@@ -1,9 +1,7 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_differential_find_Method extends ConduitAPIMethod {
+final class ConduitAPI_differential_find_Method
+  extends ConduitAPI_differential_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_DEPRECATED;
@@ -14,7 +12,7 @@ final class ConduitAPI_differential_find_Method extends ConduitAPIMethod {
   }
 
   public function getMethodDescription() {
-    return "Query Differential revisions which match certain criteria.";
+    return 'Query Differential revisions which match certain criteria.';
   }
 
   public function defineParamTypes() {
@@ -25,10 +23,8 @@ final class ConduitAPI_differential_find_Method extends ConduitAPIMethod {
       'phids',
     );
 
-    $types = implode(', ', $types);
-
     return array(
-      'query' => 'required enum<'.$types.'>',
+      'query' => 'required '.$this->formatStringConstants($types),
       'guids' => 'required nonempty list<guids>',
     );
   }

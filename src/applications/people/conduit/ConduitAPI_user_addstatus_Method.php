@@ -1,23 +1,29 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_user_addstatus_Method extends ConduitAPI_user_Method {
+final class ConduitAPI_user_addstatus_Method
+  extends ConduitAPI_user_Method {
 
   public function getMethodStatus() {
-    return self::METHOD_STATUS_UNSTABLE;
+    return self::METHOD_STATUS_DEPRECATED;
   }
 
   public function getMethodDescription() {
-    return "Add status information to the logged-in user.";
+    return pht('Add status information to the logged-in user.');
+  }
+
+  public function getMethodStatusDescription() {
+    return pht(
+      'Statuses are becoming full-fledged events as part of the '.
+      'Calendar application.');
   }
 
   public function defineParamTypes() {
+    $status_const = $this->formatStringConstants(array('away', 'sporadic'));
+
     return array(
       'fromEpoch'   => 'required int',
       'toEpoch'     => 'required int',
-      'status'      => 'required enum<away, sporadic>',
+      'status'      => 'required '.$status_const,
       'description' => 'optional string',
     );
   }
@@ -42,17 +48,15 @@ final class ConduitAPI_user_addstatus_Method extends ConduitAPI_user_Method {
     $description = $request->getValue('description', '');
 
     try {
-      id(new PhabricatorUserStatus())
+      id(new PhabricatorCalendarEvent())
         ->setUserPHID($user_phid)
         ->setDateFrom($from)
         ->setDateTo($to)
         ->setTextStatus($status)
         ->setDescription($description)
         ->save();
-    } catch (PhabricatorUserStatusInvalidEpochException $e) {
+    } catch (PhabricatorCalendarEventInvalidEpochException $e) {
       throw new ConduitException('ERR-BAD-EPOCH');
-    } catch (PhabricatorUserStatusOverlapException $e) {
-      throw new ConduitException('ERR-OVERLAP');
     }
   }
 

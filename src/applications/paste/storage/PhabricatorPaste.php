@@ -5,7 +5,8 @@ final class PhabricatorPaste extends PhabricatorPasteDAO
     PhabricatorSubscribableInterface,
     PhabricatorTokenReceiverInterface,
     PhabricatorFlaggableInterface,
-    PhabricatorPolicyInterface {
+    PhabricatorPolicyInterface,
+    PhabricatorProjectInterface {
 
   protected $title;
   protected $authorPHID;
@@ -85,6 +86,14 @@ final class PhabricatorPaste extends PhabricatorPasteDAO
 
   public function isAutomaticallySubscribed($phid) {
     return ($this->authorPHID == $phid);
+  }
+
+  public function shouldShowSubscribersProperty() {
+    return true;
+  }
+
+  public function shouldAllowSubscription($phid) {
+    return true;
   }
 
 

@@ -3,22 +3,46 @@
 final class PhabricatorProject extends PhabricatorProjectDAO
   implements
     PhabricatorFlaggableInterface,
-    PhabricatorPolicyInterface {
+    PhabricatorPolicyInterface,
+    PhabricatorSubscribableInterface,
+    PhabricatorCustomFieldInterface,
+    PhabricatorDestructableInterface {
 
   protected $name;
   protected $status = PhabricatorProjectStatus::STATUS_ACTIVE;
   protected $authorPHID;
   protected $subprojectPHIDs = array();
   protected $phrictionSlug;
+  protected $profileImagePHID;
+  protected $icon;
+  protected $color;
 
   protected $viewPolicy;
   protected $editPolicy;
   protected $joinPolicy;
 
-  private $subprojectsNeedUpdate;
   private $memberPHIDs = self::ATTACHABLE;
+  private $watcherPHIDs = self::ATTACHABLE;
+  private $sparseWatchers = self::ATTACHABLE;
   private $sparseMembers = self::ATTACHABLE;
-  private $profile = self::ATTACHABLE;
+  private $customFields = self::ATTACHABLE;
+  private $profileImageFile = self::ATTACHABLE;
+  private $slugs = self::ATTACHABLE;
+
+  const DEFAULT_ICON = 'fa-briefcase';
+  const DEFAULT_COLOR = 'blue';
+
+  public static function initializeNewProject(PhabricatorUser $actor) {
+    return id(new PhabricatorProject())
+      ->setName('')
+      ->setAuthorPHID($actor->getPHID())
+      ->setIcon(self::DEFAULT_ICON)
+      ->setColor(self::DEFAULT_COLOR)
+      ->setViewPolicy(PhabricatorPolicies::POLICY_USER)
+      ->setEditPolicy(PhabricatorPolicies::POLICY_USER)
+      ->setJoinPolicy(PhabricatorPolicies::POLICY_USER)
+      ->attachMemberPHIDs(array());
+  }
 
   public function getCapabilities() {
     return array(
@@ -65,14 +89,17 @@ final class PhabricatorProject extends PhabricatorProjectDAO
   public function describeAutomaticCapability($capability) {
     switch ($capability) {
       case PhabricatorPolicyCapability::CAN_VIEW:
-        return pht("Members of a project can always view it.");
+        return pht('Members of a project can always view it.');
       case PhabricatorPolicyCapability::CAN_JOIN:
-        return pht("Users who can edit a project can always join it.");
+        return pht('Users who can edit a project can always join it.');
     }
     return null;
   }
 
   public function isUserMember($user_phid) {
+    if ($this->memberPHIDs !== self::ATTACHABLE) {
+      return in_array($user_phid, $this->memberPHIDs);
+    }
     return $this->assertAttachedKey($this->sparseMembers, $user_phid);
   }
 
@@ -96,15 +123,6 @@ final class PhabricatorProject extends PhabricatorProjectDAO
   public function generatePHID() {
     return PhabricatorPHID::generateNewPHID(
       PhabricatorProjectPHIDTypeProject::TYPECONST);
-  }
-
-  public function getProfile() {
-    return $this->assertAttached($this->profile);
-  }
-
-  public function attachProfile(PhabricatorProjectProfile $profile) {
-    $this->profile = $profile;
-    return $this;
   }
 
   public function attachMemberPHIDs(array $phids) {
@@ -132,6 +150,136 @@ final class PhabricatorProject extends PhabricatorProjectDAO
   public function getFullPhrictionSlug() {
     $slug = $this->getPhrictionSlug();
     return 'projects/'.$slug;
+  }
+
+  // TODO - once we sever project => phriction automagicalness,
+  // migrate getPhrictionSlug to have no trailing slash and be called
+  // getPrimarySlug
+  public function getPrimarySlug() {
+    $slug = $this->getPhrictionSlug();
+    return rtrim($slug, '/');
+  }
+
+  public function isArchived() {
+    return ($this->getStatus() == PhabricatorProjectStatus::STATUS_ARCHIVED);
+  }
+
+  public function getProfileImageURI() {
+    return $this->getProfileImageFile()->getBestURI();
+  }
+
+  public function attachProfileImageFile(PhabricatorFile $file) {
+    $this->profileImageFile = $file;
+    return $this;
+  }
+
+  public function getProfileImageFile() {
+    return $this->assertAttached($this->profileImageFile);
+  }
+
+
+  public function isUserWatcher($user_phid) {
+    if ($this->watcherPHIDs !== self::ATTACHABLE) {
+      return in_array($user_phid, $this->watcherPHIDs);
+    }
+    return $this->assertAttachedKey($this->sparseWatchers, $user_phid);
+  }
+
+  public function setIsUserWatcher($user_phid, $is_watcher) {
+    if ($this->sparseWatchers === self::ATTACHABLE) {
+      $this->sparseWatchers = array();
+    }
+    $this->sparseWatchers[$user_phid] = $is_watcher;
+    return $this;
+  }
+
+  public function attachWatcherPHIDs(array $phids) {
+    $this->watcherPHIDs = $phids;
+    return $this;
+  }
+
+  public function getWatcherPHIDs() {
+    return $this->assertAttached($this->watcherPHIDs);
+  }
+
+  public function attachSlugs(array $slugs) {
+    $this->slugs = $slugs;
+    return $this;
+  }
+
+  public function getSlugs() {
+    return $this->assertAttached($this->slugs);
+  }
+
+  public function getColor() {
+    if ($this->isArchived()) {
+      return PHUITagView::COLOR_DISABLED;
+    }
+
+    return $this->color;
+  }
+
+
+
+/* -(  PhabricatorSubscribableInterface  )----------------------------------- */
+
+
+  public function isAutomaticallySubscribed($phid) {
+    return false;
+  }
+
+  public function shouldShowSubscribersProperty() {
+    return false;
+  }
+
+  public function shouldAllowSubscription($phid) {
+    return $this->isUserMember($phid) &&
+           !$this->isUserWatcher($phid);
+  }
+
+
+/* -(  PhabricatorCustomFieldInterface  )------------------------------------ */
+
+
+  public function getCustomFieldSpecificationForRole($role) {
+    return PhabricatorEnv::getEnvConfig('projects.fields');
+  }
+
+  public function getCustomFieldBaseClass() {
+    return 'PhabricatorProjectCustomField';
+  }
+
+  public function getCustomFields() {
+    return $this->assertAttached($this->customFields);
+  }
+
+  public function attachCustomFields(PhabricatorCustomFieldAttachment $fields) {
+    $this->customFields = $fields;
+    return $this;
+  }
+
+
+/* -(  PhabricatorDestructableInterface  )----------------------------------- */
+
+  public function destroyObjectPermanently(
+    PhabricatorDestructionEngine $engine) {
+
+    $this->openTransaction();
+      $this->delete();
+
+      $columns = id(new PhabricatorProjectColumn())
+        ->loadAllWhere('projectPHID = %s', $this->getPHID());
+      foreach ($columns as $column) {
+        $engine->destroyObject($column);
+      }
+
+      $slugs = id(new PhabricatorProjectSlug())
+        ->loadAllWhere('projectPHID = %s', $this->getPHID());
+      foreach ($slugs as $slug) {
+        $slug->delete();
+      }
+
+    $this->saveTransaction();
   }
 
 }

@@ -37,10 +37,15 @@ final class DoorkeeperBridgeAsana extends DoorkeeperBridge {
       ->withUserPHIDs(array($viewer->getPHID()))
       ->withAccountTypes(array($provider->getProviderType()))
       ->withAccountDomains(array($provider->getProviderDomain()))
+      ->requireCapabilities(
+        array(
+          PhabricatorPolicyCapability::CAN_VIEW,
+          PhabricatorPolicyCapability::CAN_EDIT,
+        ))
       ->execute();
 
     if (!$accounts) {
-      return;
+      return $this->didFailOnMissingLink();
     }
 
     // TODO: If the user has several linked Asana accounts, we just pick the

@@ -21,11 +21,10 @@ final class PhabricatorApplicationDiviner extends PhabricatorApplication {
   public function getRoutes() {
     return array(
       '/diviner/' => array(
-        '' => 'DivinerLegacyController',
+        '' => 'DivinerMainController',
         'query/((?<key>[^/]+)/)?' => 'DivinerAtomListController',
         'find/' => 'DivinerFindController',
       ),
-      '/docs/(?P<keyword>[^/]+)/' => 'DivinerJumpController',
       '/book/(?P<book>[^/]+)/' => 'DivinerBookController',
       '/book/'.
         '(?P<book>[^/]+)/'.
@@ -37,7 +36,7 @@ final class PhabricatorApplicationDiviner extends PhabricatorApplication {
   }
 
   public function getApplicationGroup() {
-    return self::GROUP_COMMUNICATION;
+    return self::GROUP_UTILITIES;
   }
 
   public function getRemarkupRules() {
@@ -46,29 +45,4 @@ final class PhabricatorApplicationDiviner extends PhabricatorApplication {
     );
   }
 
-  public function buildMainMenuItems(
-    PhabricatorUser $user,
-    PhabricatorController $controller = null) {
-
-    $items = array();
-
-    $application = null;
-    if ($controller) {
-      $application = $controller->getCurrentApplication();
-    }
-
-    if ($application && $application->getHelpURI()) {
-      $item = new PHUIListItemView();
-      $item->setName(pht('%s Help', $application->getName()));
-      $item->addClass('core-menu-item');
-      $item->setIcon('help');
-      $item->setHref($application->getHelpURI());
-      $items[] = $item;
-    }
-
-    return $items;
-  }
-
-
 }
-

@@ -14,8 +14,12 @@ final class PhabricatorApplicationDifferential extends PhabricatorApplication {
     return 'differential';
   }
 
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return true;
+  }
+
   public function getHelpURI() {
-    return PhabricatorEnv::getDoclink('article/Differential_User_Guide.html');
+    return PhabricatorEnv::getDoclink('Differential User Guide');
   }
 
   public function getFactObjectsForAnalysis() {
@@ -36,6 +40,14 @@ final class PhabricatorApplicationDifferential extends PhabricatorApplication {
     );
   }
 
+  public function getOverview() {
+    return pht(<<<EOTEXT
+Differential is a **code review application** which allows engineers to review,
+discuss and approve changes to software.
+EOTEXT
+);
+  }
+
   public function getRoutes() {
     return array(
       '/D(?P<id>[1-9]\d*)' => 'DifferentialRevisionViewController',
@@ -53,7 +65,7 @@ final class PhabricatorApplicationDifferential extends PhabricatorApplication {
           => 'DifferentialRevisionLandController',
         'comment/' => array(
           'preview/(?P<id>[1-9]\d*)/' => 'DifferentialCommentPreviewController',
-          'save/' => 'DifferentialCommentSaveController',
+          'save/(?P<id>[1-9]\d*)/' => 'DifferentialCommentSaveController',
           'inline/' => array(
             'preview/(?P<id>[1-9]\d*)/'
               => 'DifferentialInlineCommentPreviewController',
@@ -61,15 +73,9 @@ final class PhabricatorApplicationDifferential extends PhabricatorApplication {
               => 'DifferentialInlineCommentEditController',
           ),
         ),
-        'subscribe/(?P<action>add|rem)/(?P<id>[1-9]\d*)/'
-          => 'DifferentialSubscribeController',
         'preview/' => 'PhabricatorMarkupPreviewController',
       ),
     );
-  }
-
-  public function getApplicationGroup() {
-    return self::GROUP_CORE;
   }
 
   public function getApplicationOrder() {
@@ -131,4 +137,3 @@ final class PhabricatorApplicationDifferential extends PhabricatorApplication {
   }
 
 }
-

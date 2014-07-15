@@ -1,17 +1,12 @@
 <?php
 
-/**
- * @group conduit
- */
-final class ConduitAPI_user_query_Method
-  extends ConduitAPI_user_Method {
+final class ConduitAPI_user_query_Method extends ConduitAPI_user_Method {
 
   public function getMethodDescription() {
-    return "Query users.";
+    return 'Query users.';
   }
 
   public function defineParamTypes() {
-
     return array(
       'usernames'    => 'optional list<string>',
       'emails'       => 'optional list<string>',
@@ -69,7 +64,7 @@ final class ConduitAPI_user_query_Method
     }
     $users = $query->execute();
 
-    $statuses = id(new PhabricatorUserStatus())->loadCurrentStatuses(
+    $statuses = id(new PhabricatorCalendarEvent())->loadCurrentStatuses(
       mpull($users, 'getPHID'));
 
     $results = array();
@@ -80,4 +75,5 @@ final class ConduitAPI_user_query_Method
     }
     return $results;
   }
+
 }

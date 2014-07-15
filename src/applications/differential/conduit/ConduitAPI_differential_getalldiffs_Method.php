@@ -1,10 +1,7 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_differential_getalldiffs_Method
-  extends ConduitAPIMethod {
+  extends ConduitAPI_differential_Method {
 
   public function getMethodStatus() {
     return self::METHOD_STATUS_DEPRECATED;
@@ -16,7 +13,7 @@ final class ConduitAPI_differential_getalldiffs_Method
   }
 
   public function getMethodDescription() {
-    return "Load all diffs for given revisions from Differential.";
+    return 'Load all diffs for given revisions from Differential.';
   }
 
   public function defineParamTypes() {

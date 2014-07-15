@@ -82,14 +82,6 @@ final class PhabricatorMacroAudioController
       }
     }
 
-    if ($errors) {
-      $error_view = new AphrontErrorView();
-      $error_view->setTitle(pht('Form Errors'));
-      $error_view->setErrors($errors);
-    } else {
-      $error_view = null;
-    }
-
     $form = id(new AphrontFormView())
       ->addHiddenInput('behaviorForm', 1)
       ->setUser($viewer);
@@ -152,7 +144,7 @@ final class PhabricatorMacroAudioController
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($error_view)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
@@ -163,7 +155,6 @@ final class PhabricatorMacroAudioController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 }

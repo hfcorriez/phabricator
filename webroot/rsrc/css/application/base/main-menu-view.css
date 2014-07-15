@@ -14,12 +14,12 @@
   background: #2d3236;
   background-repeat: repeat-x;
   position: relative;
-  box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.25);
   min-height: 44px;
 }
 
 .device-desktop .phabricator-main-menu {
   height: 44px;
+  padding-right: 4px;
 }
 
 .phabricator-main-menu a:hover {
@@ -165,8 +165,6 @@
   color: #333;
   border-color: #e7e7e7;
   box-shadow: none;
-  -webkit-box-shadow: none;
-  -moz-box-shadow: none;
 }
 
 .phabricator-main-menu-search input.jx-typeahead-placeholder {
@@ -197,25 +195,39 @@
   background: #ffffff;
   word-wrap: break-word;
   overflow-y: auto;
-  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.5);
-  border: 2px solid #33393d;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  border: {$blueborder};
   border-radius: 3px;
   margin-left: 40px;
 }
 
+.device .phabricator-main-menu-search-target div.jx-typeahead-results {
+  margin-left: 30px;
+}
+
+.phabricator-main-search-typeahead-result .phabricator-search-icon {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  position: absolute;
+  top: 9px;
+  left: 9px;
+}
+
 .phabricator-main-search-typeahead-result {
   display: block;
-  padding: 1px 4px 1px 38px;
-  background-position: 4px 4px;
-  background-size: 25px 25px;
+  padding: 6px 8px 8px 44px;
+  background-position: 8px;
+  background-size: 30px 30px;
   background-repeat: no-repeat;
+  position: relative;
 }
 
 .phabricator-main-search-typeahead-result .result-name {
   display: block;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: bold;
-  color: #333;
+  color: {$darkgreytext};
 }
 
 .phabricator-main-search-typeahead-result .result-type {
@@ -229,6 +241,18 @@
   padding: 0;
 }
 
+.device-phone .phabricator-main-search-typeahead-result .result-name {
+  font-size: 15px;
+}
+
+.device-phone .phabricator-main-search-typeahead-result .result-type {
+  font-size: 13px;
+}
+
+.device .phabricator-dark-menu .phui-list-item-type-link
+  .phabricator-main-search-typeahead-result {
+  line-height: 18px;
+}
 
 /* - Alert ---------------------------------------------------------------------
 
@@ -286,13 +310,14 @@
 .device .phabricator-dark-menu,
 .device .phabricator-dark-menu a.phui-list-item-href {
   color: #fff;
+  -webkit-font-smoothing: antialiased;
 }
 
 .device .phabricator-dark-menu .phui-list-item-type-label {
   text-transform: uppercase;
-  font-size: 12px;
+  font-size: 13px;
   background-color: #151719;
-  padding: 5px 0;
+  padding: 6px 0;
   display: block;
   font-weight: bold;
 }
@@ -301,8 +326,8 @@
   border-width: 1px 0;
   border-style: solid;
   border-color: #34373b transparent #282c2d;
-  background-image: url(/rsrc/image/texture/dark-menu.png);
-  padding: 4px 0;
+  background-color: #272c2f;
+  padding: 4px 0 4px 16px;
   display: block;
 }
 
@@ -334,6 +359,7 @@
   font-size: 15px;
   min-height: 30px;
   line-height: 28px;
+  background: #000;
 }
 
 .device .phui-list-item-type-link
@@ -347,6 +373,10 @@
 
 .device-desktop .phabricator-application-menu .phui-list-item-view,
 .device-desktop .phabricator-application-menu .phui-list-item-name  {
+  display: none;
+}
+
+.phabricator-application-menu .phui-list-item-icon {
   display: none;
 }
 
@@ -364,22 +394,25 @@
  .core-menu-item.phui-list-item-view:hover,
 .device-desktop .phabricator-main-menu-logo:hover {
   background-color: rgba(0,0,0,.3);
+  box-shadow: inset 0 5px 10px rgba(0,0,0,0.5);
+  border-radius: 3px;
 }
 
 .device-desktop .phabricator-application-menu .phui-list-item-view {
   float: left;
   position: relative;
-  min-width: 40px;
-  height: 44px;
+  min-width: 36px;
+  height: 36px;
+  margin-top: 4px;
 }
 
 .device-desktop .phabricator-core-menu-icon {
-  top: 9px;
-  left: 6px;
+  top: 5px;
+  left: 4px;
 }
 
 .device .phabricator-core-menu-icon {
-  left: 6px;
+  left: 24px;
 }
 
 .phabricator-core-menu-icon {
@@ -388,6 +421,17 @@
   width: 28px;
   height: 28px;
 }
+
+.phabricator-main-menu-dropdown {
+  position: absolute;
+  background: #fff;
+  top: 38px;
+  padding: 2px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  border: {$blueborder};
+  border-radius: 3px;
+}
+
 
 /* - Application Menu ----------------------------------------------------------
 

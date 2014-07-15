@@ -72,35 +72,12 @@ final class HarbormasterUIEventListener
       $item = new PHUIStatusItemView();
       $item->setTarget($build_handles[$build->getPHID()]->renderLink());
 
-      switch ($build->getBuildStatus()) {
-        case HarbormasterBuild::STATUS_INACTIVE:
-          $item->setIcon('open-dark', pht('Inactive'));
-          break;
-        case HarbormasterBuild::STATUS_PENDING:
-          $item->setIcon('open-blue', pht('Pending'));
-          break;
-        case HarbormasterBuild::STATUS_WAITING:
-          $item->setIcon('up-blue', pht('Waiting on Resource'));
-          break;
-        case HarbormasterBuild::STATUS_BUILDING:
-          $item->setIcon('right-blue', pht('Building'));
-          break;
-        case HarbormasterBuild::STATUS_PASSED:
-          $item->setIcon('accept-green', pht('Passed'));
-          break;
-        case HarbormasterBuild::STATUS_FAILED:
-          $item->setIcon('reject-red', pht('Failed'));
-          break;
-        case HarbormasterBuild::STATUS_ERROR:
-          $item->setIcon('minus-red', pht('Unexpected Error'));
-          break;
-        case HarbormasterBuild::STATUS_CANCELLED:
-          $item->setIcon('minus-dark', pht('Cancelled'));
-          break;
-        default:
-          $item->setIcon('question', pht('Unknown'));
-          break;
-      }
+      $status = $build->getBuildStatus();
+      $status_name = HarbormasterBuild::getBuildStatusName($status);
+      $icon = HarbormasterBuild::getBuildStatusIcon($status);
+      $color = HarbormasterBuild::getBuildStatusColor($status);
+
+      $item->setIcon($icon, $color, $status_name);
 
 
       $status_view->addItem($item);

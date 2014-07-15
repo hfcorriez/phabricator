@@ -95,14 +95,14 @@ final class DivinerAtom {
 
   public function getDocblockText() {
     if ($this->docblockText === null) {
-      throw new Exception("Call setDocblockRaw() before getDocblockText()!");
+      throw new Exception('Call setDocblockRaw() before getDocblockText()!');
     }
     return $this->docblockText;
   }
 
   public function getDocblockMeta() {
     if ($this->docblockMeta === null) {
-      throw new Exception("Call setDocblockRaw() before getDocblockMeta()!");
+      throw new Exception('Call setDocblockRaw() before getDocblockMeta()!');
     }
     return $this->docblockMeta;
   }
@@ -197,6 +197,7 @@ final class DivinerAtom {
     }
 
     $parts = array(
+      $this->getBook(),
       $this->getType(),
       $this->getName(),
       $this->getFile(),
@@ -247,7 +248,7 @@ final class DivinerAtom {
 
   public function setParentHash($parent_hash) {
     if ($this->parentHash) {
-      throw new Exception("Atom already has a parent!");
+      throw new Exception('Atom already has a parent!');
     }
     $this->parentHash = $parent_hash;
     return $this;
@@ -259,7 +260,7 @@ final class DivinerAtom {
 
   public function setParent(DivinerAtom $atom) {
     if ($this->parentHash) {
-      throw new Exception("Parent hash has already been computed!");
+      throw new Exception('Parent hash has already been computed!');
     }
     $this->parent = $atom;
     return $this;
@@ -274,7 +275,7 @@ final class DivinerAtom {
 
   public function addChild(DivinerAtom $atom) {
     if ($this->childHashes) {
-      throw new Exception("Child hashes have already been computed!");
+      throw new Exception('Child hashes have already been computed!');
     }
 
     $atom->setParent($this);
@@ -400,6 +401,17 @@ final class DivinerAtom {
         phlog("Need translation for '{$type}'.");
         return pht('This %s is not documented.', $type);
     }
+  }
+
+  public static function getAllTypes() {
+    return array(
+      self::TYPE_FILE,
+      self::TYPE_FUNCTION,
+      self::TYPE_CLASS,
+      self::TYPE_ARTICLE,
+      self::TYPE_METHOD,
+      self::TYPE_INTERFACE,
+    );
   }
 
   public static function getAtomTypeNameString($type) {

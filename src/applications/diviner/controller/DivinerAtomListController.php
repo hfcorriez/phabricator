@@ -1,7 +1,6 @@
 <?php
 
-final class DivinerAtomListController extends DivinerController
-  implements PhabricatorApplicationSearchResultsControllerInterface {
+final class DivinerAtomListController extends DivinerController {
 
   private $key;
 
@@ -21,12 +20,6 @@ final class DivinerAtomListController extends DivinerController
       ->setNavigation($this->buildSideNavView());
 
     return $this->delegateToController($controller);
-  }
-
-  public function renderResultsList(
-    array $symbols,
-    PhabricatorSavedQuery $query) {
-    return $this->renderAtomList($symbols);
   }
 
 }

@@ -1,9 +1,7 @@
 <?php
 
-/**
- * @group conpherence
- */
 abstract class ConpherenceController extends PhabricatorController {
+
   private $conpherences;
 
   public function buildApplicationMenu() {
@@ -25,7 +23,7 @@ abstract class ConpherenceController extends PhabricatorController {
       id(new PHUIListItemView())
       ->setName(pht('New Calendar Item'))
       ->setType(PHUIListItemView::TYPE_LINK)
-      ->setHref('/calendar/status/create/')
+      ->setHref('/calendar/event/create/')
       ->addSigil('conpherence-widget-adder')
       ->setMetadata(array('widget' => 'widgets-calendar')));
 
@@ -40,13 +38,13 @@ abstract class ConpherenceController extends PhabricatorController {
         id(new PHUIListItemView())
         ->setName(pht('New Message'))
         ->setHref($this->getApplicationURI('new/'))
-        ->setIcon('create')
+        ->setIcon('fa-plus-square')
         ->setWorkflow(true))
       ->addAction(
         id(new PHUIListItemView())
         ->setName(pht('Thread'))
         ->setHref('#')
-        ->setIcon('action-menu')
+        ->setIcon('fa-bars')
         ->setStyle('display: none;')
         ->addClass('device-widgets-selector')
         ->addSigil('device-widgets-selector'));
@@ -149,8 +147,8 @@ abstract class ConpherenceController extends PhabricatorController {
     return array(
       'transactions' => $rendered_transactions,
       'latest_transaction_id' => $latest_transaction_id,
-      'oldest_transaction_id' => $oldest_transaction_id
+      'oldest_transaction_id' => $oldest_transaction_id,
     );
-
   }
+
 }

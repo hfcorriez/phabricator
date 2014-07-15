@@ -2,6 +2,10 @@
 
 final class PhabricatorTokenGivenController extends PhabricatorTokenController {
 
+  public function shouldAllowPublic() {
+    return true;
+  }
+
   public function processRequest() {
     $request = $this->getRequest();
     $user = $request->getUser();
@@ -69,7 +73,6 @@ final class PhabricatorTokenGivenController extends PhabricatorTokenController {
       $nav,
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 

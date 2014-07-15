@@ -4,7 +4,7 @@ final class PhabricatorJumpNavHandler {
 
   public static function getJumpResponse(PhabricatorUser $viewer, $jump) {
     $jump = trim($jump);
-    $help_href = PhabricatorEnv::getDocLink('article/Jump_Nav_User_Guide.html');
+    $help_href = PhabricatorEnv::getDocLink('Jump Nav User Guide');
 
     $patterns = array(
       '/^help/i'                  => 'uri:'.$help_href,
@@ -16,9 +16,7 @@ final class PhabricatorJumpNavHandler {
       '/^p$/i'                    => 'uri:/project/',
       '/^u$/i'                    => 'uri:/people/',
       '/^p\s+(.+)$/i'             => 'project',
-      '/^#(.+)$/i'                => 'project',
       '/^u\s+(\S+)$/i'            => 'user',
-      '/^@(.+)$/i'                => 'user',
       '/^task:\s*(.+)/i'          => 'create-task',
       '/^(?:s|symbol)\s+(\S+)/i'  => 'find-symbol',
       '/^r\s+(.+)$/i'             => 'find-repository',

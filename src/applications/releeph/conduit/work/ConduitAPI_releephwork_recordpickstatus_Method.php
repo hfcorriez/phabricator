@@ -8,13 +8,19 @@ final class ConduitAPI_releephwork_recordpickstatus_Method
   }
 
   public function getMethodDescription() {
-    return "Record whether a pick or revert was successful or not.";
+    return 'Record whether a pick or revert was successful or not.';
   }
 
   public function defineParamTypes() {
+    $action_const = $this->formatStringConstants(
+      array(
+        'pick',
+        'revert',
+      ));
+
     return array(
       'requestPHID'       => 'required string',
-      'action'            => 'required enum<"pick", "revert">',
+      'action'            => 'required '.$action_const,
       'ok'                => 'required bool',
       'dryRun'            => 'optional bool',
       'details'           => 'optional dict<string, wild>',

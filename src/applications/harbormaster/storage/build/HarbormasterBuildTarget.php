@@ -3,24 +3,35 @@
 final class HarbormasterBuildTarget extends HarbormasterDAO
   implements PhabricatorPolicyInterface {
 
+  protected $name;
   protected $buildPHID;
   protected $buildStepPHID;
   protected $className;
   protected $details;
   protected $variables;
+  protected $targetStatus;
+
+  const STATUS_PENDING = 'target/pending';
+  const STATUS_BUILDING = 'target/building';
+  const STATUS_WAITING = 'target/waiting';
+  const STATUS_PASSED = 'target/passed';
+  const STATUS_FAILED = 'target/failed';
 
   private $build = self::ATTACHABLE;
   private $buildStep = self::ATTACHABLE;
+  private $implementation;
 
   public static function initializeNewBuildTarget(
     HarbormasterBuild $build,
     HarbormasterBuildStep $build_step,
     array $variables) {
     return id(new HarbormasterBuildTarget())
+      ->setName($build_step->getName())
       ->setBuildPHID($build->getPHID())
       ->setBuildStepPHID($build_step->getPHID())
       ->setClassName($build_step->getClassName())
       ->setDetails($build_step->getDetails())
+      ->setTargetStatus(self::STATUS_PENDING)
       ->setVariables($variables);
   }
 
@@ -66,6 +77,10 @@ final class HarbormasterBuildTarget extends HarbormasterDAO
     return $this;
   }
 
+  public function getVariables() {
+    return parent::getVariables() + $this->getBuildTargetVariables();
+  }
+
   public function getVariable($key, $default = null) {
     return idx($this->variables, $key, $default);
   }
@@ -76,23 +91,76 @@ final class HarbormasterBuildTarget extends HarbormasterDAO
   }
 
   public function getImplementation() {
-    if ($this->className === null) {
-      throw new Exception("No implementation set for the given target.");
+    if ($this->implementation === null) {
+      $obj = HarbormasterBuildStepImplementation::requireImplementation(
+        $this->className);
+      $obj->loadSettings($this);
+      $this->implementation = $obj;
     }
 
-    static $implementations = null;
-    if ($implementations === null) {
-      $implementations = BuildStepImplementation::getImplementations();
+    return $this->implementation;
+  }
+
+  public function getName() {
+    if (strlen($this->name)) {
+      return $this->name;
     }
 
-    $class = $this->className;
-    if (!in_array($class, $implementations)) {
-      throw new Exception(
-        "Class name '".$class."' does not extend BuildStepImplementation.");
+    try {
+      return $this->getImplementation()->getName();
+    } catch (Exception $e) {
+      return $this->getClassName();
     }
-    $implementation = newv($class, array());
-    $implementation->loadSettings($this);
-    return $implementation;
+  }
+
+  private function getBuildTargetVariables() {
+    return array(
+      'target.phid' => $this->getPHID(),
+    );
+  }
+
+
+/* -(  Status  )------------------------------------------------------------- */
+
+
+  public function isComplete() {
+    switch ($this->getTargetStatus()) {
+      case self::STATUS_PASSED:
+      case self::STATUS_FAILED:
+        return true;
+    }
+
+    return false;
+  }
+
+
+  public function isFailed() {
+    switch ($this->getTargetStatus()) {
+      case self::STATUS_FAILED:
+        return true;
+    }
+
+    return false;
+  }
+
+
+  public function isWaiting() {
+    switch ($this->getTargetStatus()) {
+      case self::STATUS_WAITING:
+        return true;
+    }
+
+    return false;
+  }
+
+  public function isUnderway() {
+    switch ($this->getTargetStatus()) {
+      case self::STATUS_PENDING:
+      case self::STATUS_BUILDING:
+        return true;
+    }
+
+    return false;
   }
 
 
@@ -116,8 +184,7 @@ final class HarbormasterBuildTarget extends HarbormasterDAO
   }
 
   public function describeAutomaticCapability($capability) {
-    return pht(
-      'Users must be able to see a build to view its build targets.');
+    return pht('Users must be able to see a build to view its build targets.');
   }
 
 }

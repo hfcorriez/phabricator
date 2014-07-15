@@ -37,8 +37,10 @@ final class PhabricatorPeopleHovercardEventListener
       $hovercard->addField(pht('Account'), pht('Disabled'));
     } else if (!$user->isUserActivated()) {
       $hovercard->addField(pht('Account'), pht('Not Activated'));
-    } else {
-      $statuses = id(new PhabricatorUserStatus())->loadCurrentStatuses(
+    } else if (PhabricatorApplication::isClassInstalledForViewer(
+        'PhabricatorApplicationCalendar',
+        $viewer)) {
+      $statuses = id(new PhabricatorCalendarEvent())->loadCurrentStatuses(
         array($user->getPHID()));
       if ($statuses) {
         $current_status = reset($statuses);

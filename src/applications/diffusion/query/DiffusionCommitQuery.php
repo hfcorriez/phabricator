@@ -4,13 +4,38 @@ final class DiffusionCommitQuery
   extends PhabricatorCursorPagedPolicyAwareQuery {
 
   private $ids;
-  private $identifiers;
   private $phids;
+  private $authorPHIDs;
   private $defaultRepository;
-  private $identifierMap;
+  private $identifiers;
   private $repositoryIDs;
+  private $identifierMap;
+
+  private $needAuditRequests;
+  private $auditIDs;
+  private $auditorPHIDs;
+  private $auditAwaitingUser;
+  private $auditStatus;
+  const AUDIT_STATUS_ANY       = 'audit-status-any';
+  const AUDIT_STATUS_OPEN      = 'audit-status-open';
+  const AUDIT_STATUS_CONCERN   = 'audit-status-concern';
 
   private $needCommitData;
+
+  public function withIDs(array $ids) {
+    $this->ids = $ids;
+    return $this;
+  }
+
+  public function withPHIDs(array $phids) {
+    $this->phids = $phids;
+    return $this;
+  }
+
+  public function withAuthorPHIDs(array $phids) {
+    $this->authorPHIDs = $phids;
+    return $this;
+  }
 
   /**
    * Load commits by partial or full identifiers, e.g. "rXab82393", "rX1234",
@@ -20,6 +45,16 @@ final class DiffusionCommitQuery
    */
   public function withIdentifiers(array $identifiers) {
     $this->identifiers = $identifiers;
+    return $this;
+  }
+
+  /**
+   * Look up commits in a specific repository. This is a shorthand for calling
+   * @{method:withDefaultRepository} and @{method:withRepositoryIDs}.
+   */
+  public function withRepository(PhabricatorRepository $repository) {
+    $this->withDefaultRepository($repository);
+    $this->withRepositoryIDs(array($repository->getID()));
     return $this;
   }
 
@@ -42,38 +77,68 @@ final class DiffusionCommitQuery
     return $this;
   }
 
-  public function withIDs(array $ids) {
-    $this->ids = $ids;
+  public function needCommitData($need) {
+    $this->needCommitData = $need;
     return $this;
   }
 
-  public function withPHIDs(array $phids) {
-    $this->phids = $phids;
+  public function needAuditRequests($need) {
+    $this->needAuditRequests = $need;
     return $this;
+  }
+
+  /**
+   * Retuns true if we should join the audit table, either because we're
+   * interested in the information if it's available or because matching
+   * rows must always have it.
+   */
+  private function shouldJoinAudits() {
+    return $this->auditStatus ||
+           $this->rowsMustHaveAudits();
   }
 
 
   /**
-   * Look up commits in a specific repository. This is a shorthand for calling
-   * @{method:withDefaultRepository} and @{method:withRepositoryIDs}.
+   * Return true if we should `JOIN` (vs `LEFT JOIN`) the audit table, because
+   * matching commits will always have audit rows.
    */
-  public function withRepository(PhabricatorRepository $repository) {
-    $this->withDefaultRepository($repository);
-    $this->withRepositoryIDs(array($repository->getID()));
+  private function rowsMustHaveAudits() {
+    return
+      $this->auditIDs ||
+      $this->auditorPHIDs ||
+      $this->auditAwaitingUser;
+  }
+
+  public function withAuditIDs(array $ids) {
+    $this->auditIDs = $ids;
     return $this;
   }
 
-  public function needCommitData($need) {
-    $this->needCommitData = $need;
+  public function withAuditorPHIDs(array $auditor_phids) {
+    $this->auditorPHIDs = $auditor_phids;
+    return $this;
+  }
+
+  public function withAuditAwaitingUser(PhabricatorUser $user) {
+    $this->auditAwaitingUser = $user;
+    return $this;
+  }
+
+  public function withAuditStatus($status) {
+    $this->auditStatus = $status;
     return $this;
   }
 
   public function getIdentifierMap() {
     if ($this->identifierMap === null) {
       throw new Exception(
-        "You must execute() the query before accessing the identifier map.");
+        'You must execute() the query before accessing the identifier map.');
     }
     return $this->identifierMap;
+  }
+
+  protected function getPagingColumn() {
+    return 'commit.id';
   }
 
   protected function willExecute() {
@@ -88,9 +153,11 @@ final class DiffusionCommitQuery
 
     $data = queryfx_all(
       $conn_r,
-      'SELECT * FROM %T %Q %Q %Q',
+      'SELECT commit.* FROM %T commit %Q %Q %Q %Q %Q',
       $table->getTableName(),
+      $this->buildJoinClause($conn_r),
       $this->buildWhereClause($conn_r),
+      $this->buildGroupClause($conn_r),
       $this->buildOrderClause($conn_r),
       $this->buildLimitClause($conn_r));
 
@@ -146,7 +213,7 @@ final class DiffusionCommitQuery
           $result[$identifier] = head($matching_commits);
         } else {
           // This reference is ambiguous (it matches more than one commit) so
-          // don't link it
+          // don't link it.
           unset($result[$identifier]);
         }
       }
@@ -166,7 +233,28 @@ final class DiffusionCommitQuery
       $data = mpull($data, null, 'getCommitID');
       foreach ($commits as $commit) {
         $commit_data = idx($data, $commit->getID());
+        if (!$commit_data) {
+          $commit_data = new PhabricatorRepositoryCommitData();
+        }
         $commit->attachCommitData($commit_data);
+      }
+    }
+
+    // TODO: This should just be `needAuditRequests`, not `shouldJoinAudits()`,
+    // but leave that for a future diff.
+
+    if ($this->needAuditRequests || $this->shouldJoinAudits()) {
+      $requests = id(new PhabricatorRepositoryAuditRequest())->loadAllWhere(
+        'commitPHID IN (%Ls)',
+        mpull($commits, 'getPHID'));
+
+      $requests = mgroup($requests, 'getCommitPHID');
+      foreach ($commits as $commit) {
+        $audit_requests = idx($requests, $commit->getPHID(), array());
+        $commit->attachAudits($audit_requests);
+        foreach ($audit_requests as $audit_request) {
+          $audit_request->attachCommit($commit);
+        }
       }
     }
 
@@ -176,7 +264,35 @@ final class DiffusionCommitQuery
   private function buildWhereClause(AphrontDatabaseConnection $conn_r) {
     $where = array();
 
-    if ($this->identifiers) {
+    if ($this->ids !== null) {
+      $where[] = qsprintf(
+        $conn_r,
+        'commit.id IN (%Ld)',
+        $this->ids);
+    }
+
+    if ($this->phids !== null) {
+      $where[] = qsprintf(
+        $conn_r,
+        'commit.phid IN (%Ls)',
+        $this->phids);
+    }
+
+    if ($this->repositoryIDs !== null) {
+      $where[] = qsprintf(
+        $conn_r,
+        'commit.repositoryID IN (%Ld)',
+        $this->repositoryIDs);
+    }
+
+    if ($this->authorPHIDs !== null) {
+      $where[] = qsprintf(
+        $conn_r,
+        'commit.authorPHID IN (%Ls)',
+        $this->authorPHIDs);
+    }
+
+    if ($this->identifiers !== null) {
       $min_unqualified = PhabricatorRepository::MINIMUM_UNQUALIFIED_HASH;
       $min_qualified   = PhabricatorRepository::MINIMUM_QUALIFIED_HASH;
 
@@ -212,7 +328,8 @@ final class DiffusionCommitQuery
       foreach ($bare as $identifier) {
         $sql[] = qsprintf(
           $conn_r,
-          '(commitIdentifier LIKE %> AND LENGTH(commitIdentifier) = 40)',
+          '(commit.commitIdentifier LIKE %> AND '.
+          'LENGTH(commit.commitIdentifier) = 40)',
           $identifier);
       }
 
@@ -236,7 +353,7 @@ final class DiffusionCommitQuery
             }
             $sql[] = qsprintf(
               $conn_r,
-              '(repositoryID = %d AND commitIdentifier = %s)',
+              '(commit.repositoryID = %d AND commit.commitIdentifier = %s)',
               $repo->getID(),
               // NOTE: Because the 'commitIdentifier' column is a string, MySQL
               // ignores the index if we hand it an integer. Hand it a string.
@@ -248,7 +365,7 @@ final class DiffusionCommitQuery
             }
             $sql[] = qsprintf(
               $conn_r,
-              '(repositoryID = %d AND commitIdentifier LIKE %>)',
+              '(commit.repositoryID = %d AND commit.commitIdentifier LIKE %>)',
               $repo->getID(),
               $ref['identifier']);
           }
@@ -259,32 +376,75 @@ final class DiffusionCommitQuery
         // If we discarded all possible identifiers (e.g., they all referenced
         // bogus repositories or were all too short), make sure the query finds
         // nothing.
-        throw new PhabricatorEmptyQueryException('No commit identifiers.');
+        throw new PhabricatorEmptyQueryException(
+          pht('No commit identifiers.'));
       }
 
       $where[] = '('.implode(' OR ', $sql).')';
     }
 
-    if ($this->ids) {
+    if ($this->auditIDs !== null) {
       $where[] = qsprintf(
         $conn_r,
-        'id IN (%Ld)',
-        $this->ids);
+        'audit.id IN (%Ld)',
+        $this->auditIDs);
     }
 
-    if ($this->phids) {
+    if ($this->auditorPHIDs !== null) {
       $where[] = qsprintf(
         $conn_r,
-        'phid IN (%Ls)',
-        $this->phids);
+        'audit.auditorPHID IN (%Ls)',
+        $this->auditorPHIDs);
     }
 
-    if ($this->repositoryIDs) {
+    if ($this->auditAwaitingUser) {
+      $awaiting_user_phid = $this->auditAwaitingUser->getPHID();
+      // Exclude package and project audits associated with commits where
+      // the user is the author.
       $where[] = qsprintf(
         $conn_r,
-        'repositoryID IN (%Ld)',
-        $this->repositoryIDs);
+        '(commit.authorPHID IS NULL OR commit.authorPHID != %s)
+          OR (audit.auditorPHID = %s)',
+        $awaiting_user_phid,
+        $awaiting_user_phid);
     }
+
+    $status = $this->auditStatus;
+    if ($status !== null) {
+      switch ($status) {
+        case self::AUDIT_STATUS_CONCERN:
+          $where[] = qsprintf(
+            $conn_r,
+            'audit.auditStatus = %s',
+            PhabricatorAuditStatusConstants::CONCERNED);
+          break;
+        case self::AUDIT_STATUS_OPEN:
+          $where[] = qsprintf(
+            $conn_r,
+            'audit.auditStatus in (%Ls)',
+            PhabricatorAuditStatusConstants::getOpenStatusConstants());
+          if ($this->auditAwaitingUser) {
+            $where[] = qsprintf(
+              $conn_r,
+              'awaiting.auditStatus IS NULL OR awaiting.auditStatus != %s',
+              PhabricatorAuditStatusConstants::RESIGNED);
+          }
+          break;
+        case self::AUDIT_STATUS_ANY:
+          break;
+        default:
+          $valid = array(
+            self::AUDIT_STATUS_ANY,
+            self::AUDIT_STATUS_OPEN,
+            self::AUDIT_STATUS_CONCERN,
+          );
+          throw new Exception(
+            "Unknown audit status '{$status}'! Valid statuses are: ".
+            implode(', ', $valid));
+      }
+    }
+
+    $where[] = $this->buildPagingClause($conn_r);
 
     return $this->formatWhereClause($where);
   }
@@ -296,6 +456,54 @@ final class DiffusionCommitQuery
           unset($this->identifierMap[$name]);
         }
       }
+    }
+  }
+
+  private function buildJoinClause($conn_r) {
+    $joins = array();
+    $audit_request = new PhabricatorRepositoryAuditRequest();
+
+    if ($this->shouldJoinAudits()) {
+      $joins[] = qsprintf(
+        $conn_r,
+        '%Q %T audit ON commit.phid = audit.commitPHID',
+        ($this->rowsMustHaveAudits() ? 'JOIN' : 'LEFT JOIN'),
+        $audit_request->getTableName());
+    }
+
+    if ($this->auditAwaitingUser) {
+      // Join the request table on the awaiting user's requests, so we can
+      // filter out package and project requests which the user has resigned
+      // from.
+      $joins[] = qsprintf(
+        $conn_r,
+        'LEFT JOIN %T awaiting ON audit.commitPHID = awaiting.commitPHID AND
+        awaiting.auditorPHID = %s',
+        $audit_request->getTableName(),
+        $this->auditAwaitingUser->getPHID());
+    }
+
+    if ($joins) {
+      return implode(' ', $joins);
+    } else {
+      return '';
+    }
+  }
+
+  private function buildGroupClause(AphrontDatabaseConnection $conn_r) {
+    $should_group = $this->shouldJoinAudits();
+
+    // TODO: Currently, the audit table is missing a unique key, so we may
+    // require a GROUP BY if we perform this join. See T1768. This can be
+    // removed once the table has the key.
+    if ($this->auditAwaitingUser) {
+      $should_group = true;
+    }
+
+    if ($should_group) {
+      return 'GROUP BY commit.id';
+    } else {
+      return '';
     }
   }
 

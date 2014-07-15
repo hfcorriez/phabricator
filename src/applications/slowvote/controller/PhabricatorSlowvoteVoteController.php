@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group slowvote
- */
 final class PhabricatorSlowvoteVoteController
   extends PhabricatorSlowvoteController {
 
@@ -24,6 +21,9 @@ final class PhabricatorSlowvoteVoteController
       ->executeOne();
     if (!$poll) {
       return new Aphront404Response();
+    }
+    if ($poll->getIsClosed()) {
+      return new Aphront400Response();
     }
 
     $options = $poll->getOptions();
@@ -78,11 +78,9 @@ final class PhabricatorSlowvoteVoteController
     $this->updateVotes($user, $poll, $old_votes, $votes);
 
     return id(new AphrontRedirectResponse())->setURI('/V'.$poll->getID());
-
   }
 
   private function updateVotes($user, $poll, $old_votes, $votes) {
-
     if (!empty($votes) && count($votes) > 1 &&
         $poll->getMethod() == PhabricatorSlowvotePoll::METHOD_PLURALITY) {
       return id(new Aphront400Response());
@@ -105,8 +103,6 @@ final class PhabricatorSlowvoteVoteController
         ->setOptionID($vote)
         ->save();
     }
-
   }
-
 
 }

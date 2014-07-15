@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group conduit
- */
 abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
 
   public function getApplication() {
@@ -38,7 +35,6 @@ abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
       'ccPHIDs'       => 'optional list<phid>',
       'priority'      => 'optional int',
       'projectPHIDs'  => 'optional list<phid>',
-      'filePHIDs'     => 'optional list<phid>',
       'auxiliary'     => 'optional dict',
     );
 
@@ -63,7 +59,7 @@ abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
       $task->setTitle((string)$request->getValue('title'));
       $task->setDescription((string)$request->getValue('description'));
       $changes[ManiphestTransaction::TYPE_STATUS] =
-        ManiphestTaskStatus::STATUS_OPEN;
+        ManiphestTaskStatus::getDefaultStatus();
     } else {
 
       $comments = $request->getValue('comments');
@@ -104,38 +100,29 @@ abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
 
     $owner_phid = $request->getValue('ownerPHID');
     if ($owner_phid !== null) {
-      $this->validatePHIDList(array($owner_phid),
-                              PhabricatorPeoplePHIDTypeUser::TYPECONST,
-                              'ownerPHID');
+      $this->validatePHIDList(
+        array($owner_phid),
+        PhabricatorPeoplePHIDTypeUser::TYPECONST,
+        'ownerPHID');
       $changes[ManiphestTransaction::TYPE_OWNER] = $owner_phid;
     }
 
     $ccs = $request->getValue('ccPHIDs');
     if ($ccs !== null) {
-      $this->validatePHIDList($ccs,
-                              PhabricatorPeoplePHIDTypeUser::TYPECONST,
-                              'ccPHIDS');
+      $this->validatePHIDList(
+        $ccs,
+        PhabricatorPeoplePHIDTypeUser::TYPECONST,
+        'ccPHIDS');
       $changes[ManiphestTransaction::TYPE_CCS] = $ccs;
     }
 
     $project_phids = $request->getValue('projectPHIDs');
     if ($project_phids !== null) {
-      $this->validatePHIDList($project_phids,
-                              PhabricatorProjectPHIDTypeProject::TYPECONST,
-                              'projectPHIDS');
+      $this->validatePHIDList(
+        $project_phids,
+        PhabricatorProjectPHIDTypeProject::TYPECONST,
+        'projectPHIDS');
       $changes[ManiphestTransaction::TYPE_PROJECTS] = $project_phids;
-    }
-
-    $file_phids = $request->getValue('filePHIDs');
-    if ($file_phids !== null) {
-      $this->validatePHIDList($file_phids,
-                              PhabricatorFilePHIDTypeFile::TYPECONST,
-                              'filePHIDS');
-      $file_map = array_fill_keys($file_phids, true);
-      $attached = $task->getAttached();
-      $attached[PhabricatorFilePHIDTypeFile::TYPECONST] = $file_map;
-
-      $changes[ManiphestTransaction::TYPE_ATTACH] = $attached;
     }
 
     $template = new ManiphestTransaction();
@@ -220,7 +207,6 @@ abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
     $event->setUser($request->getUser());
     $event->setConduitRequest($request);
     PhutilEventEngine::dispatchEvent($event);
-
   }
 
   protected function buildTaskInfoDictionaries(array $tasks) {
@@ -260,7 +246,12 @@ abstract class ConduitAPI_maniphest_Method extends ConduitAPIMethod {
         'ownerPHID'    => $task->getOwnerPHID(),
         'ccPHIDs'      => $task->getCCPHIDs(),
         'status'       => $task->getStatus(),
+        'statusName'   => ManiphestTaskStatus::getTaskStatusName(
+          $task->getStatus()),
+        'isClosed'     => $task->isClosed(),
         'priority'     => ManiphestTaskPriority::getTaskPriorityName(
+          $task->getPriority()),
+        'priorityColor' => ManiphestTaskPriority::getTaskPriorityColor(
           $task->getPriority()),
         'title'        => $task->getTitle(),
         'description'  => $task->getDescription(),

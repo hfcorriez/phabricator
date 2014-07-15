@@ -11,11 +11,67 @@ final class ReleephIntentFieldSpecification
     return 'Intent';
   }
 
-  public function renderValueForHeaderView() {
-    return id(new ReleephRequestIntentsView())
-      ->setReleephRequest($this->getReleephRequest())
-      ->setReleephProject($this->getReleephProject())
-      ->render();
+  public function getRequiredHandlePHIDsForPropertyView() {
+    $pull = $this->getReleephRequest();
+    $intents = $pull->getUserIntents();
+    return array_keys($intents);
+  }
+
+  public function renderPropertyViewValue(array $handles) {
+    $pull = $this->getReleephRequest();
+
+    $intents = $pull->getUserIntents();
+    $product = $this->getReleephProject();
+
+    if (!$intents) {
+      return null;
+    }
+
+    $pushers = array();
+    $others = array();
+
+    foreach ($intents as $phid => $intent) {
+      if ($product->isAuthoritativePHID($phid)) {
+        $pushers[$phid] = $intent;
+      } else {
+        $others[$phid] = $intent;
+      }
+    }
+
+    $intents = $pushers + $others;
+
+    $view = id(new PHUIStatusListView());
+    foreach ($intents as $phid => $intent) {
+      switch ($intent) {
+        case ReleephRequest::INTENT_WANT:
+          $icon = PHUIStatusItemView::ICON_ACCEPT;
+          $color = 'green';
+          $label = pht('Want');
+          break;
+        case ReleephRequest::INTENT_PASS:
+          $icon = PHUIStatusItemView::ICON_REJECT;
+          $color = 'red';
+          $label = pht('Pass');
+          break;
+        default:
+          $icon = PHUIStatusItemView::ICON_QUESTION;
+          $color = 'bluegrey';
+          $label = pht('Unknown Intent (%s)', $intent);
+          break;
+      }
+
+      $target = $handles[$phid]->renderLink();
+      if ($product->isAuthoritativePHID($phid)) {
+        $target = phutil_tag('strong', array(), $target);
+      }
+
+      $view->addItem(
+        id(new PHUIStatusItemView())
+          ->setIcon($icon, $color, $label)
+          ->setTarget($target));
+    }
+
+    return $view;
   }
 
   public function shouldAppearOnCommitMessage() {
@@ -27,11 +83,11 @@ final class ReleephIntentFieldSpecification
   }
 
   public function renderLabelForCommitMessage() {
-    return "Approved By";
+    return 'Approved By';
   }
 
   public function renderLabelForRevertMessage() {
-    return "Rejected By";
+    return 'Rejected By';
   }
 
   public function renderValueForCommitMessage() {

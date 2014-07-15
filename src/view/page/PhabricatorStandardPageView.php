@@ -13,7 +13,6 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
   private $menuContent;
   private $showChrome = true;
   private $disableConsole;
-  private $searchDefaultScope;
   private $pageObjects = array();
   private $applicationMenu;
 
@@ -56,15 +55,6 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
 
   public function getShowChrome() {
     return $this->showChrome;
-  }
-
-  public function setSearchDefaultScope($search_default_scope) {
-    $this->searchDefaultScope = $search_default_scope;
-    return $this;
-  }
-
-  public function getSearchDefaultScope() {
-    return $this->searchDefaultScope;
   }
 
   public function appendPageObjects(array $objs) {
@@ -111,7 +101,7 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
     if (!$this->getRequest()) {
       throw new Exception(
         pht(
-          "You must set the Request to render a PhabricatorStandardPageView."));
+          'You must set the Request to render a PhabricatorStandardPageView.'));
     }
 
     $console = $this->getConsole();
@@ -178,6 +168,22 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
 
     Javelin::initBehavior('device');
 
+    if ($user->hasSession()) {
+      $hisec = ($user->getSession()->getHighSecurityUntil() - time());
+      if ($hisec > 0) {
+        $remaining_time = phutil_format_relative_time($hisec);
+        Javelin::initBehavior(
+          'high-security-warning',
+          array(
+            'uri' => '/auth/session/downgrade/',
+            'message' => pht(
+              'Your session is in high security mode. When you '.
+              'finish using it, click here to leave.',
+              $remaining_time),
+          ));
+      }
+    }
+
     if ($console) {
       require_celerity_resource('aphront-dark-console-css');
 
@@ -212,8 +218,7 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
     }
 
     $menu = id(new PhabricatorMainMenuView())
-      ->setUser($viewer)
-      ->setDefaultSearchScope($this->getSearchDefaultScope());
+      ->setUser($viewer);
 
     if ($this->getController()) {
       $menu->setController($this->getController());
@@ -347,50 +352,63 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
     $request = $this->getRequest();
     $user = $request->getUser();
 
-    $container = null;
-    if ($user && $user->isLoggedIn()) {
-
-      $aphlict_object_id = celerity_generate_unique_node_id();
-      $aphlict_container_id = celerity_generate_unique_node_id();
-
-      $client_uri = PhabricatorEnv::getEnvConfig('notification.client-uri');
-      $client_uri = new PhutilURI($client_uri);
-      if ($client_uri->getDomain() == 'localhost') {
-        $this_host = $this->getRequest()->getHost();
-        $this_host = new PhutilURI('http://'.$this_host.'/');
-        $client_uri->setDomain($this_host->getDomain());
-      }
-
-      $enable_debug = PhabricatorEnv::getEnvConfig('notification.debug');
-      Javelin::initBehavior(
-        'aphlict-listen',
-        array(
-          'id'           => $aphlict_object_id,
-          'containerID'  => $aphlict_container_id,
-          'server'       => $client_uri->getDomain(),
-          'port'         => $client_uri->getPort(),
-          'debug'        => $enable_debug,
-          'pageObjects'  => array_fill_keys($this->pageObjects, true),
-        ));
-      $container = phutil_tag(
-        'div',
-        array(
-          'id' => $aphlict_container_id,
-          'style' =>
-            'position: absolute; width: 0; height: 0; overflow: hidden;',
-        ),
-        '');
-    }
+    $tail = array(
+      parent::getTail(),
+    );
 
     $response = CelerityAPI::getStaticResourceResponse();
 
-    $tail = array(
-      parent::getTail(),
-      $container,
-      $response->renderHTMLFooter(),
-    );
+    if (PhabricatorEnv::getEnvConfig('notification.enabled')) {
+      if ($user && $user->isLoggedIn()) {
 
-    return phutil_implode_html("\n", $tail);
+        $aphlict_object_id = celerity_generate_unique_node_id();
+        $aphlict_container_id = celerity_generate_unique_node_id();
+
+        $client_uri = PhabricatorEnv::getEnvConfig('notification.client-uri');
+        $client_uri = new PhutilURI($client_uri);
+        if ($client_uri->getDomain() == 'localhost') {
+          $this_host = $this->getRequest()->getHost();
+          $this_host = new PhutilURI('http://'.$this_host.'/');
+          $client_uri->setDomain($this_host->getDomain());
+        }
+
+        $map = CelerityResourceMap::getNamedInstance('phabricator');
+        $swf_uri = $response->getURI($map, 'rsrc/swf/aphlict.swf', true);
+
+        $enable_debug = PhabricatorEnv::getEnvConfig('notification.debug');
+
+        $subscriptions = $this->pageObjects;
+        if ($user) {
+          $subscriptions[] = $user->getPHID();
+        }
+
+        Javelin::initBehavior(
+          'aphlict-listen',
+          array(
+            'id'            => $aphlict_object_id,
+            'containerID'   => $aphlict_container_id,
+            'server'        => $client_uri->getDomain(),
+            'port'          => $client_uri->getPort(),
+            'debug'         => $enable_debug,
+            'swfURI'        => $swf_uri,
+            'pageObjects'   => array_fill_keys($this->pageObjects, true),
+            'subscriptions' => $subscriptions,
+          ));
+
+        $tail[] = phutil_tag(
+          'div',
+          array(
+            'id' => $aphlict_container_id,
+            'style' =>
+              'position: absolute; width: 0; height: 0; overflow: hidden;',
+          ),
+          '');
+      }
+    }
+
+    $tail[] = $response->renderHTMLFooter();
+
+    return $tail;
   }
 
   protected function getBodyClasses() {
@@ -423,6 +441,10 @@ final class PhabricatorStandardPageView extends PhabricatorBarePageView {
 
     if ($this->getRequest()->getStr('__print__')) {
       $classes[] = 'printable';
+    }
+
+    if ($this->getRequest()->getStr('__aural__')) {
+      $classes[] = 'audible';
     }
 
     return implode(' ', $classes);

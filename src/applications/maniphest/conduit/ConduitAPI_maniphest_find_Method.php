@@ -1,8 +1,6 @@
 <?php
 
 /**
- * @group conduit
- *
  * @concrete-extensible
  */
 final class ConduitAPI_maniphest_find_Method
@@ -17,7 +15,7 @@ final class ConduitAPI_maniphest_find_Method
   }
 
   public function getMethodDescription() {
-    return "Deprecated alias of maniphest.query";
+    return 'Deprecated alias of maniphest.query';
   }
 
 }

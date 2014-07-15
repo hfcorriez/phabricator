@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group maniphest
- */
 final class ManiphestTransactionPreviewController extends ManiphestController {
 
   private $id;
@@ -95,6 +92,11 @@ final class ManiphestTransactionPreviewController extends ManiphestController {
         $transaction->setOldValue($task->getProjectPHIDs());
         $transaction->setNewValue($value);
         break;
+      case ManiphestTransaction::TYPE_STATUS:
+        $phids = array();
+        $transaction->setOldValue($task->getStatus());
+        $transaction->setNewValue($value);
+        break;
       default:
         $phids = array();
         $transaction->setNewValue($value);
@@ -121,8 +123,7 @@ final class ManiphestTransactionPreviewController extends ManiphestController {
     $view = id(new PhabricatorApplicationTransactionView())
       ->setUser($user)
       ->setTransactions($transactions)
-      ->setIsPreview(true)
-      ->setIsDetailView(true);
+      ->setIsPreview(true);
 
     return id(new AphrontAjaxResponse())
       ->setContent((string)phutil_implode_html('', $view->buildEvents()));

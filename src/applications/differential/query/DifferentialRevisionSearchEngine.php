@@ -3,6 +3,14 @@
 final class DifferentialRevisionSearchEngine
   extends PhabricatorApplicationSearchEngine {
 
+  public function getResultTypeDescription() {
+    return pht('Differential Revisions');
+  }
+
+  public function getApplicationClassName() {
+    return 'PhabricatorApplicationDifferential';
+  }
+
   public function getPageSize(PhabricatorSavedQuery $saved) {
     if ($saved->getQueryKey() == 'active') {
       return 0xFFFF;
@@ -55,6 +63,8 @@ final class DifferentialRevisionSearchEngine
 
   public function buildQueryFromSavedQuery(PhabricatorSavedQuery $saved) {
     $query = id(new DifferentialRevisionQuery())
+      ->needFlags(true)
+      ->needDrafts(true)
       ->needRelationships(true);
 
     $responsible_phids = $saved->getParameter('responsiblePHIDs', array());
@@ -157,7 +167,7 @@ final class DifferentialRevisionSearchEngine
         id(new AphrontFormTokenizerControl())
           ->setLabel(pht('Repositories'))
           ->setName('repositories')
-          ->setDatasource('/typeahead/common/repositories/')
+          ->setDatasource(new DiffusionRepositoryDatasource())
           ->setValue(array_select_keys($handles, $repository_phids)))
       ->appendChild(
         id(new AphrontFormSelectControl())
@@ -239,6 +249,74 @@ final class DifferentialRevisionSearchEngine
       DifferentialRevisionQuery::ORDER_CREATED    => pht('Created'),
       DifferentialRevisionQuery::ORDER_MODIFIED   => pht('Updated'),
     );
+  }
+
+  protected function renderResultList(
+    array $revisions,
+    PhabricatorSavedQuery $query,
+    array $handles) {
+    assert_instances_of($revisions, 'DifferentialRevision');
+
+    $viewer = $this->requireViewer();
+    $template = id(new DifferentialRevisionListView())
+      ->setUser($viewer);
+
+    $views = array();
+    if ($query->getQueryKey() == 'active') {
+        $split = DifferentialRevisionQuery::splitResponsible(
+          $revisions,
+          $query->getParameter('responsiblePHIDs'));
+        list($blocking, $active, $waiting) = $split;
+
+      $views[] = id(clone $template)
+        ->setHeader(pht('Blocking Others'))
+        ->setNoDataString(
+          pht('No revisions are blocked on your action.'))
+        ->setHighlightAge(true)
+        ->setRevisions($blocking)
+        ->setHandles(array());
+
+      $views[] = id(clone $template)
+        ->setHeader(pht('Action Required'))
+        ->setNoDataString(
+          pht('No revisions require your action.'))
+        ->setHighlightAge(true)
+        ->setRevisions($active)
+        ->setHandles(array());
+
+      $views[] = id(clone $template)
+        ->setHeader(pht('Waiting on Others'))
+        ->setNoDataString(
+          pht('You have no revisions waiting on others.'))
+        ->setRevisions($waiting)
+        ->setHandles(array());
+    } else {
+      $views[] = id(clone $template)
+        ->setRevisions($revisions)
+        ->setHandles(array());
+    }
+
+    $phids = array_mergev(mpull($views, 'getRequiredHandlePHIDs'));
+    if ($phids) {
+      $handles = id(new PhabricatorHandleQuery())
+        ->setViewer($viewer)
+        ->withPHIDs($phids)
+        ->execute();
+    } else {
+      $handles = array();
+    }
+
+    foreach ($views as $view) {
+      $view->setHandles($handles);
+    }
+
+    if (count($views) == 1) {
+      // Reduce this to a PHUIObjectItemListView so we can get the free
+      // support from ApplicationSearch.
+      return head($views)->render();
+    } else {
+      return $views;
+    }
   }
 
 }

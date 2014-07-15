@@ -1,13 +1,10 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_maniphest_update_Method
   extends ConduitAPI_maniphest_Method {
 
   public function getMethodDescription() {
-    return "Update an existing Maniphest task.";
+    return 'Update an existing Maniphest task.';
   }
 
   public function defineErrorTypes() {
@@ -49,9 +46,8 @@ final class ConduitAPI_maniphest_update_Method
     $params = $request->getAllParameters();
     unset($params['id']);
     unset($params['phid']);
-    $params = call_user_func_array('coalesce', $params);
 
-    if (!$params) {
+    if (call_user_func_array('coalesce', $params) === null) {
       throw new ConduitException('ERR-NO-EFFECT');
     }
 

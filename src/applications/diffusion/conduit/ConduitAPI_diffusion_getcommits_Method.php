@@ -1,13 +1,18 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_diffusion_getcommits_Method
   extends ConduitAPI_diffusion_Method {
 
   public function getMethodDescription() {
-    return "Retrieve Diffusion commit information.";
+    return pht('Retrieve Diffusion commit information.');
+  }
+
+  public function getMethodStatus() {
+    return self::METHOD_STATUS_DEPRECATED;
+  }
+
+  public function getMethodStatusDescription() {
+    return pht('Obsoleted by diffusion.querycommits.');
   }
 
   public function defineParamTypes() {
@@ -21,19 +26,17 @@ final class ConduitAPI_diffusion_getcommits_Method
   }
 
   public function defineErrorTypes() {
-    return array(
-    );
+    return array();
   }
 
   protected function execute(ConduitAPIRequest $request) {
-
     $results = array();
 
     $commits = $request->getValue('commits');
     $commits = array_fill_keys($commits, array());
     foreach ($commits as $name => $info) {
       $matches = null;
-      if (!preg_match('/^r([A-Z]+)([0-9a-f]+)$/', $name, $matches)) {
+      if (!preg_match('/^r([A-Z]+)([0-9a-f]+)\z/', $name, $matches)) {
         $results[$name] = array(
           'error' => 'ERR-UNPARSEABLE',
         );

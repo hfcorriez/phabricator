@@ -7,8 +7,6 @@
  * script system interactions and integrate with other systems.
  *
  * NOTE: This is super janky and experimental right now.
- *
- * @group irc
  */
 final class PhabricatorBot extends PhabricatorDaemon {
 
@@ -21,7 +19,7 @@ final class PhabricatorBot extends PhabricatorDaemon {
   public function run() {
     $argv = $this->getArgv();
     if (count($argv) !== 1) {
-      throw new Exception("usage: PhabricatorBot <json_config_file>");
+      throw new Exception('usage: PhabricatorBot <json_config_file>');
     }
 
     $json_raw = Filesystem::readFile($argv[0]);
@@ -45,6 +43,11 @@ final class PhabricatorBot extends PhabricatorDaemon {
       $this->handlers[] = $obj;
     }
 
+    $ca_bundle = idx($config, 'https.cabundle');
+    if ($ca_bundle) {
+      HTTPSFuture::setGlobalCABundleFromPath($ca_bundle);
+    }
+
     $conduit_uri = idx($config, 'conduit.uri');
     if ($conduit_uri) {
       $conduit_user = idx($config, 'conduit.user');
@@ -53,8 +56,9 @@ final class PhabricatorBot extends PhabricatorDaemon {
       // Normalize the path component of the URI so users can enter the
       // domain without the "/api/" part.
       $conduit_uri = new PhutilURI($conduit_uri);
-      $conduit_uri->setPath('/api/');
-      $conduit_uri = (string)$conduit_uri;
+
+      $conduit_host = (string)$conduit_uri->setPath('/');
+      $conduit_uri = (string)$conduit_uri->setPath('/api/');
 
       $conduit = new ConduitClient($conduit_uri);
       $response = $conduit->callMethodSynchronous(
@@ -63,6 +67,7 @@ final class PhabricatorBot extends PhabricatorDaemon {
           'client'            => 'PhabricatorBot',
           'clientVersion'     => '1.0',
           'clientDescription' => php_uname('n').':'.$nick,
+          'host'              => $conduit_host,
           'user'              => $conduit_user,
           'certificate'       => $conduit_cert,
         ));
@@ -115,7 +120,7 @@ final class PhabricatorBot extends PhabricatorDaemon {
     }
 
     if ($message->getCommand() == 'LOG') {
-      $this->log("[LOG] ".$message->getBody());
+      $this->log('[LOG] '.$message->getBody());
     }
 
     foreach ($this->handlers as $handler) {

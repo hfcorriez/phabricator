@@ -3,9 +3,11 @@
 final class PhabricatorRepositoryCommitHeraldWorker
   extends PhabricatorRepositoryCommitParserWorker {
 
+  const MAX_FILES_SHOWN_IN_EMAIL = 1000;
+
   public function getRequiredLeaseTime() {
     // Herald rules may take a long time to process.
-    return 4 * 60 * 60;
+    return phutil_units('4 hours in seconds');
   }
 
   public function parseCommit(
@@ -24,10 +26,16 @@ final class PhabricatorRepositoryCommitHeraldWorker
     PhabricatorRepository $repository,
     PhabricatorRepositoryCommit $commit) {
 
+    $commit->attachRepository($repository);
+
     // Don't take any actions on an importing repository. Principally, this
     // avoids generating thousands of audits or emails when you import an
     // established repository on an existing install.
     if ($repository->isImporting()) {
+      return;
+    }
+
+    if ($repository->getDetail('herald-disabled')) {
       return;
     }
 
@@ -42,10 +50,8 @@ final class PhabricatorRepositoryCommitHeraldWorker
           'or no longer exists.'));
     }
 
-    $adapter = HeraldCommitAdapter::newLegacyAdapter(
-      $repository,
-      $commit,
-      $data);
+    $adapter = id(new HeraldCommitAdapter())
+      ->setCommit($commit);
 
     $rules = id(new HeraldRuleQuery())
       ->setViewer(PhabricatorUser::getOmnipotentUser())
@@ -74,11 +80,6 @@ final class PhabricatorRepositoryCommitHeraldWorker
       $adapter->getBuildPlans());
 
     $explicit_auditors = $this->createAuditsFromCommitMessage($commit, $data);
-
-    if ($repository->getDetail('herald-disabled')) {
-      // This just means "disable email"; audits are (mostly) idempotent.
-      return;
-    }
 
     $this->publishFeedStory($repository, $commit, $data);
 
@@ -139,8 +140,14 @@ final class PhabricatorRepositoryCommitHeraldWorker
       ? PhabricatorEnv::getProductionURI('/D'.$revision->getID())
       : 'No revision.';
 
+    $limit = self::MAX_FILES_SHOWN_IN_EMAIL;
     $files = $adapter->loadAffectedPaths();
     sort($files);
+    if (count($files) > $limit) {
+      array_splice($files, $limit);
+      $files[] = '(This commit affected more than '.$limit.' files. '.
+        'Only '.$limit.' are shown here and additional ones are truncated.)';
+    }
     $files = implode("\n", $files);
 
     $xscript_id = $xscript->getID();
@@ -157,6 +164,26 @@ final class PhabricatorRepositoryCommitHeraldWorker
     $body = new PhabricatorMetaMTAMailBody();
     $body->addRawSection($description);
     $body->addTextSection(pht('DETAILS'), $commit_uri);
+
+    // TODO: This should be integrated properly once we move to
+    // ApplicationTransactions.
+    $field_list = PhabricatorCustomField::getObjectFields(
+      $commit,
+      PhabricatorCustomField::ROLE_APPLICATIONTRANSACTIONS);
+    $field_list
+      ->setViewer(PhabricatorUser::getOmnipotentUser())
+      ->readFieldsFromStorage($commit);
+    foreach ($field_list->getFields() as $field) {
+      try {
+        $field->buildApplicationTransactionMailBody(
+          new DifferentialTransaction(), // Bogus object to satisfy typehint.
+          $body);
+      } catch (Exception $ex) {
+        // Log the exception and continue.
+        phlog($ex);
+      }
+    }
+
     $body->addTextSection(pht('DIFFERENTIAL REVISION'), $differential);
     $body->addTextSection(pht('AFFECTED FILES'), $files);
     $body->addReplySection($reply_handler->getReplyHandlerInstructions());
@@ -174,7 +201,7 @@ final class PhabricatorRepositoryCommitHeraldWorker
     $template->setRelatedPHID($commit->getPHID());
     $template->setSubject("{$commit_name}: {$name}");
     $template->setSubjectPrefix($prefix);
-    $template->setVarySubjectPrefix("[Commit]");
+    $template->setVarySubjectPrefix('[Commit]');
     $template->setBody($body);
     $template->setThreadID($thread_id, $is_new = true);
     $template->addHeader('Thread-Topic', $thread_topic);
@@ -272,10 +299,16 @@ final class PhabricatorRepositoryCommitHeraldWorker
       return array();
     }
 
-    $phids = DifferentialFieldSpecification::parseCommitMessageObjectList(
-      $matches[1],
-      $include_mailables = false,
-      $allow_partial = true);
+    $phids = id(new PhabricatorObjectListQuery())
+      ->setViewer(PhabricatorUser::getOmnipotentUser())
+      ->setAllowPartialResults(true)
+      ->setAllowedTypes(
+        array(
+          PhabricatorPeoplePHIDTypeUser::TYPECONST,
+          PhabricatorProjectPHIDTypeProject::TYPECONST,
+        ))
+      ->setObjectList($matches[1])
+      ->execute();
 
     if (!$phids) {
       return array();
@@ -436,8 +469,8 @@ final class PhabricatorRepositoryCommitHeraldWorker
 
     $size = strlen($raw_diff);
     if ($byte_limit && $size > $byte_limit) {
-      $pretty_size = phabricator_format_bytes($size);
-      $pretty_limit = phabricator_format_bytes($byte_limit);
+      $pretty_size = phutil_format_bytes($size);
+      $pretty_limit = phutil_format_bytes($byte_limit);
       throw new Exception(
         "Patch size of {$pretty_size} exceeds configured byte size limit of ".
         "{$pretty_limit}.");

@@ -61,13 +61,6 @@ final class DiffusionRepositoryEditEncodingController
 
     $title = pht('Edit %s', $repository->getName());
 
-    $error_view = null;
-    if ($errors) {
-      $error_view = id(new AphrontErrorView())
-        ->setTitle(pht('Form Errors'))
-        ->setErrors($errors);
-    }
-
     $form = id(new AphrontFormView())
       ->setUser($user)
       ->appendRemarkupInstructions($this->getEncodingInstructions())
@@ -85,7 +78,7 @@ final class DiffusionRepositoryEditEncodingController
     $object_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
       ->setForm($form)
-      ->setFormError($error_view);
+      ->setFormErrors($errors);
 
     return $this->buildApplicationPage(
       array(
@@ -94,7 +87,6 @@ final class DiffusionRepositoryEditEncodingController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 
@@ -114,7 +106,7 @@ Phabricator handles text encodings.
 EOT
     ,
     PhabricatorEnv::getDoclink(
-      'article/User_Guide_UTF-8_and_Character_Encoding.html'));
+      'User Guide: UTF-8 and Character Encoding'));
   }
 
 }

@@ -1,12 +1,9 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_paste_query_Method extends ConduitAPI_paste_Method {
 
   public function getMethodDescription() {
-    return "Query Pastes.";
+    return 'Query Pastes.';
   }
 
   public function defineParamTypes() {

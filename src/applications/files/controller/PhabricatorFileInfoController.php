@@ -39,9 +39,9 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
 
     $ttl = $file->getTTL();
     if ($ttl !== null) {
-      $ttl_tag = id(new PhabricatorTagView())
-        ->setType(PhabricatorTagView::TYPE_OBJECT)
-        ->setName(pht("Temporary"));
+      $ttl_tag = id(new PHUITagView())
+        ->setType(PHUITagView::TYPE_OBJECT)
+        ->setName(pht('Temporary'));
       $header->addTag($ttl_tag);
     }
 
@@ -66,7 +66,6 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
       ),
       array(
         'title' => $file->getName(),
-        'device'  => true,
         'pageObjects' => array($file->getPHID()),
       ));
   }
@@ -99,10 +98,6 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
       ? pht('Add Comment')
       : pht('Question File Integrity');
 
-    $submit_button_name = $is_serious
-      ? pht('Add Comment')
-      : pht('Debate the Bits');
-
     $draft = PhabricatorDraft::newFromUserAndKey($user, $file->getPHID());
 
     $add_comment_form = id(new PhabricatorApplicationTransactionCommentView())
@@ -111,7 +106,7 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
       ->setDraft($draft)
       ->setHeaderText($add_comment_header)
       ->setAction($this->getApplicationURI('/comment/'.$file->getID().'/'))
-      ->setSubmitButtonName($submit_button_name);
+      ->setSubmitButtonName(pht('Add Comment'));
 
     return array(
       $timeline,
@@ -133,7 +128,7 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
       $view->addAction(
         id(new PhabricatorActionView())
           ->setName(pht('View File'))
-          ->setIcon('preview')
+          ->setIcon('fa-file-o')
           ->setHref($file->getViewURI()));
     } else {
       $view->addAction(
@@ -142,14 +137,14 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
           ->setRenderAsForm(true)
           ->setDownload(true)
           ->setName(pht('Download File'))
-          ->setIcon('download')
+          ->setIcon('fa-download')
           ->setHref($file->getViewURI()));
     }
 
     $view->addAction(
       id(new PhabricatorActionView())
         ->setName(pht('Delete File'))
-        ->setIcon('delete')
+        ->setIcon('fa-times')
         ->setHref($this->getApplicationURI("/delete/{$id}/"))
         ->setWorkflow(true));
 
@@ -184,7 +179,7 @@ final class PhabricatorFileInfoController extends PhabricatorFileController {
 
     $finfo->addProperty(
       pht('Size'),
-      phabricator_format_bytes($file->getByteSize()));
+      phutil_format_bytes($file->getByteSize()));
 
     $finfo->addProperty(
       pht('Mime Type'),

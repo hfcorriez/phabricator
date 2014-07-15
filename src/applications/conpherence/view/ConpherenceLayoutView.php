@@ -59,10 +59,10 @@ final class ConpherenceLayoutView extends AphrontView {
     $selected_id = null;
     $selected_thread_id = null;
     if ($this->thread) {
-      $selected_id = $this->thread->getPHID() . '-nav-item';
+      $selected_id = $this->thread->getPHID().'-nav-item';
       $selected_thread_id = $this->thread->getID();
     }
-    Javelin::initBehavior('conpherence-menu',
+    $this->initBehavior('conpherence-menu',
       array(
         'baseURI' => $this->baseURI,
         'layoutID' => $layout_id,
@@ -74,18 +74,20 @@ final class ConpherenceLayoutView extends AphrontView {
         'hasWidgets' => false,
       ));
 
-    Javelin::initBehavior(
+    $this->initBehavior(
       'conpherence-widget-pane',
       array(
-        'widgetBaseUpdateURI' => $this->baseURI . 'update/',
+        'widgetBaseUpdateURI' => $this->baseURI.'update/',
         'widgetRegistry' => array(
           'conpherence-message-pane' => array(
             'name' => pht('Thread'),
+            'icon' => 'fa-comment',
             'deviceOnly' => true,
             'hasCreate' => false
           ),
           'widgets-people' => array(
             'name' => pht('Participants'),
+            'icon' => 'fa-users',
             'deviceOnly' => false,
             'hasCreate' => true,
             'createData' => array(
@@ -96,21 +98,24 @@ final class ConpherenceLayoutView extends AphrontView {
           ),
           'widgets-files' => array(
             'name' => pht('Files'),
+            'icon' => 'fa-files-o',
             'deviceOnly' => false,
             'hasCreate' => false
           ),
           'widgets-calendar' => array(
             'name' => pht('Calendar'),
+            'icon' => 'fa-calendar',
             'deviceOnly' => false,
             'hasCreate' => true,
             'createData' => array(
               'refreshFromResponse' => false,
               'action' => ConpherenceUpdateActions::ADD_STATUS,
-              'customHref' => '/calendar/status/create/'
+              'customHref' => '/calendar/event/create/'
             )
           ),
           'widgets-settings' => array(
             'name' => pht('Settings'),
+            'icon' => 'fa-wrench',
             'deviceOnly' => false,
             'hasCreate' => false
           ),

@@ -116,11 +116,7 @@ final class PhabricatorPasteViewController extends PhabricatorPasteController {
 
     $add_comment_header = $is_serious
       ? pht('Add Comment')
-      : pht('Debate Paste Accuracy');
-
-    $submit_button_name = $is_serious
-      ? pht('Add Comment')
-      : pht('Pity the Fool');
+      : pht('Eat Paste');
 
     $draft = PhabricatorDraft::newFromUserAndKey($user, $paste->getPHID());
 
@@ -130,7 +126,7 @@ final class PhabricatorPasteViewController extends PhabricatorPasteController {
       ->setDraft($draft)
       ->setHeaderText($add_comment_header)
       ->setAction($this->getApplicationURI('/comment/'.$paste->getID().'/'))
-      ->setSubmitButtonName($submit_button_name);
+      ->setSubmitButtonName(pht('Add Comment'));
 
     return $this->buildApplicationPage(
       array(
@@ -142,7 +138,6 @@ final class PhabricatorPasteViewController extends PhabricatorPasteController {
       ),
       array(
         'title' => $paste->getFullName(),
-        'device' => true,
         'pageObjects' => array($paste->getPHID()),
       ));
   }
@@ -177,23 +172,23 @@ final class PhabricatorPasteViewController extends PhabricatorPasteController {
       ->setObjectURI($this->getRequest()->getRequestURI())
       ->addAction(
         id(new PhabricatorActionView())
+          ->setName(pht('Edit Paste'))
+          ->setIcon('fa-pencil')
+          ->setDisabled(!$can_edit)
+          ->setWorkflow(!$can_edit)
+          ->setHref($this->getApplicationURI('/edit/'.$paste->getID().'/')))
+      ->addAction(
+        id(new PhabricatorActionView())
           ->setName(pht('Fork This Paste'))
-          ->setIcon('fork')
+          ->setIcon('fa-code-fork')
           ->setDisabled(!$can_fork)
           ->setWorkflow(!$can_fork)
           ->setHref($fork_uri))
       ->addAction(
         id(new PhabricatorActionView())
           ->setName(pht('View Raw File'))
-          ->setIcon('file')
-          ->setHref($file->getBestURI()))
-      ->addAction(
-        id(new PhabricatorActionView())
-          ->setName(pht('Edit Paste'))
-          ->setIcon('edit')
-          ->setDisabled(!$can_edit)
-          ->setWorkflow(!$can_edit)
-          ->setHref($this->getApplicationURI('/edit/'.$paste->getID().'/')));
+          ->setIcon('fa-file-text-o')
+          ->setHref($file->getBestURI()));
   }
 
   private function buildPropertyView(

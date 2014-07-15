@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group search
- */
 final class PhabricatorSearchEditController
   extends PhabricatorSearchBaseController {
 
@@ -66,11 +63,6 @@ final class PhabricatorSearchEditController
       }
     }
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())
-        ->setErrors($errors);
-    }
-
     $form = id(new AphrontFormView())
       ->setUser($user);
 
@@ -94,7 +86,7 @@ final class PhabricatorSearchEditController
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     $crumbs = $this->buildApplicationCrumbs();
@@ -107,9 +99,7 @@ final class PhabricatorSearchEditController
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
-
 
 }

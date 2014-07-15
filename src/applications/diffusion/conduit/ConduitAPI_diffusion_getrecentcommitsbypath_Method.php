@@ -1,15 +1,12 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_diffusion_getrecentcommitsbypath_Method
   extends ConduitAPI_diffusion_Method {
 
   const DEFAULT_LIMIT = 10;
 
   public function getMethodDescription() {
-    return "Get commit identifiers for recent commits affecting a given path.";
+    return 'Get commit identifiers for recent commits affecting a given path.';
   }
 
   public function defineParamTypes() {
@@ -64,4 +61,5 @@ final class ConduitAPI_diffusion_getrecentcommitsbypath_Method
     }
     return $result;
   }
+
 }

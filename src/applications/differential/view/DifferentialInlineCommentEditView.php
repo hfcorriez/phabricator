@@ -42,10 +42,10 @@ final class DifferentialInlineCommentEditView extends AphrontView {
 
   public function render() {
     if (!$this->uri) {
-      throw new Exception("Call setSubmitURI() before render()!");
+      throw new Exception('Call setSubmitURI() before render()!');
     }
     if (!$this->user) {
-      throw new Exception("Call setUser() before render()!");
+      throw new Exception('Call setUser() before render()!');
     }
 
     $content = phabricator_form(
@@ -95,7 +95,7 @@ final class DifferentialInlineCommentEditView extends AphrontView {
   private function renderBody() {
     $buttons = array();
 
-    $buttons[] = phutil_tag('button', array(), 'Ready');
+    $buttons[] = phutil_tag('button', array(), pht('Ready'));
     $buttons[] = javelin_tag(
       'button',
       array(
@@ -103,16 +103,6 @@ final class DifferentialInlineCommentEditView extends AphrontView {
         'class' => 'grey',
       ),
       pht('Cancel'));
-
-    $formatting = phutil_tag(
-      'a',
-      array(
-        'href' => PhabricatorEnv::getDoclink(
-          'article/Remarkup_Reference.html'),
-        'tabindex' => '-1',
-        'target' => '_blank',
-      ),
-      pht('Formatting Reference'));
 
     $title = phutil_tag(
       'div',
@@ -134,7 +124,6 @@ final class DifferentialInlineCommentEditView extends AphrontView {
         'class' => 'differential-inline-comment-edit-buttons',
       ),
       array(
-        $formatting,
         $buttons,
         phutil_tag('div', array('style' => 'clear: both'), ''),
       ));

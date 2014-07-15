@@ -8,37 +8,45 @@ abstract class DiffusionBrowseController extends DiffusionController {
 
   protected function renderSearchForm($collapsed) {
     $drequest = $this->getDiffusionRequest();
+
+    $forms = array();
     $form = id(new AphrontFormView())
       ->setUser($this->getRequest()->getUser())
       ->setMethod('GET');
 
     switch ($drequest->getRepository()->getVersionControlSystem()) {
       case PhabricatorRepositoryType::REPOSITORY_TYPE_SVN:
-        $form->appendChild(pht('Search is not available in Subversion.'));
+        $forms[] = id(clone $form)
+          ->appendChild(pht('Search is not available in Subversion.'));
         break;
-
       default:
-        $form
+        $forms[] = id(clone $form)
           ->appendChild(
-            id(new AphrontFormTextControl())
-              ->setLabel(pht('Search Here'))
+            id(new AphrontFormTextWithSubmitControl())
+              ->setLabel(pht('File Name'))
+              ->setSubmitLabel(pht('Search File Names'))
+              ->setName('find')
+              ->setValue($this->getRequest()->getStr('find')));
+        $forms[] = id(clone $form)
+          ->appendChild(
+            id(new AphrontFormTextWithSubmitControl())
+              ->setLabel(pht('Pattern'))
+              ->setSubmitLabel(pht('Grep File Content'))
               ->setName('grep')
-              ->setValue($this->getRequest()->getStr('grep'))
-              ->setCaption(pht('Enter a regular expression.')))
-          ->appendChild(
-            id(new AphrontFormSubmitControl())
-              ->setValue(pht('Search File Content')));
+              ->setValue($this->getRequest()->getStr('grep')));
         break;
     }
 
+
     $filter = new AphrontListFilterView();
-    $filter->appendChild($form);
+    $filter->appendChild($forms);
+
 
     if ($collapsed) {
       $filter->setCollapsed(
         pht('Show Search'),
         pht('Hide Search'),
-        pht('Search for file content in this directory.'),
+        pht('Search for file names or content in this directory.'),
         '#');
     }
 
@@ -86,9 +94,9 @@ abstract class DiffusionBrowseController extends DiffusionController {
       id(new PhabricatorActionView())
         ->setName(pht('View History'))
         ->setHref($history_uri)
-        ->setIcon('history'));
+        ->setIcon('fa-list'));
 
-    $behind_head = $drequest->getRawCommit();
+    $behind_head = $drequest->getSymbolicCommit();
     $head_uri = $drequest->generateURI(
       array(
         'commit' => '',
@@ -98,7 +106,7 @@ abstract class DiffusionBrowseController extends DiffusionController {
       id(new PhabricatorActionView())
         ->setName(pht('Jump to HEAD'))
         ->setHref($head_uri)
-        ->setIcon('home')
+        ->setIcon('fa-home')
         ->setDisabled(!$behind_head));
 
     // TODO: Ideally, this should live in Owners and be event-triggered, but
@@ -117,7 +125,7 @@ abstract class DiffusionBrowseController extends DiffusionController {
         id(new PhabricatorActionView())
           ->setName(pht('Find Owners'))
           ->setHref((string)$owners_uri)
-          ->setIcon('preview'));
+          ->setIcon('fa-users'));
     }
 
     return $view;
@@ -133,7 +141,7 @@ abstract class DiffusionBrowseController extends DiffusionController {
       ->setUser($viewer)
       ->setActionList($actions);
 
-    $stable_commit = $drequest->getStableCommitName();
+    $stable_commit = $drequest->getStableCommit();
     $callsign = $drequest->getRepository()->getCallsign();
 
     $view->addProperty(
@@ -149,7 +157,7 @@ abstract class DiffusionBrowseController extends DiffusionController {
         ),
         $drequest->getRepository()->formatCommitName($stable_commit)));
 
-    if ($drequest->getCommitType() == 'tag') {
+    if ($drequest->getSymbolicType() == 'tag') {
       $symbolic = $drequest->getSymbolicCommit();
       $view->addProperty(pht('Tag'), $symbolic);
 
@@ -193,6 +201,8 @@ abstract class DiffusionBrowseController extends DiffusionController {
       ->setOrder(DifferentialRevisionQuery::ORDER_PATH_MODIFIED)
       ->setLimit(10)
       ->needRelationships(true)
+      ->needFlags(true)
+      ->needDrafts(true)
       ->execute();
 
     if (!$revisions) {
@@ -201,9 +211,7 @@ abstract class DiffusionBrowseController extends DiffusionController {
 
     $view = id(new DifferentialRevisionListView())
       ->setRevisions($revisions)
-      ->setFields(DifferentialRevisionListView::getDefaultFields($user))
-      ->setUser($user)
-      ->loadAssets();
+      ->setUser($user);
 
     $phids = $view->getRequiredHandlePHIDs();
     $handles = $this->loadViewerHandles($phids);

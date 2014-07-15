@@ -20,8 +20,8 @@ final class HeraldEngine {
     return $this->dryRun;
   }
 
-  public function getRule($id) {
-    return idx($this->rules, $id);
+  public function getRule($phid) {
+    return idx($this->rules, $phid);
   }
 
   public function loadRulesForAdapter(HeraldAdapter $adapter) {
@@ -49,7 +49,7 @@ final class HeraldEngine {
     assert_instances_of($rules, 'HeraldRule');
     $t_start = microtime(true);
 
-    $rules = mpull($rules, null, 'getID');
+    $rules = mpull($rules, null, 'getPHID');
 
     $this->transcript = new HeraldTranscript();
     $this->transcript->setObjectPHID((string)$object->getPHID());
@@ -59,24 +59,28 @@ final class HeraldEngine {
     $this->object  = $object;
 
     $effects = array();
-    foreach ($rules as $id => $rule) {
+    foreach ($rules as $phid => $rule) {
       $this->stack = array();
+
+      $policy_first = HeraldRepetitionPolicyConfig::FIRST;
+      $policy_first_int = HeraldRepetitionPolicyConfig::toInt($policy_first);
+      $is_first_only = ($rule->getRepetitionPolicy() == $policy_first_int);
+
       try {
         if (!$this->getDryRun() &&
-            ($rule->getRepetitionPolicy() ==
-             HeraldRepetitionPolicyConfig::FIRST) &&
+            $is_first_only &&
             $rule->getRuleApplied($object->getPHID())) {
           // This is not a dry run, and this rule is only supposed to be
           // applied a single time, and it's already been applied...
           // That means automatic failure.
           $xscript = id(new HeraldRuleTranscript())
-            ->setRuleID($id)
+            ->setRuleID($rule->getID())
             ->setResult(false)
             ->setRuleName($rule->getName())
             ->setRuleOwner($rule->getAuthorPHID())
             ->setReason(
-              "This rule is only supposed to be repeated a single time, ".
-              "and it has already been applied.");
+              'This rule is only supposed to be repeated a single time, '.
+              'and it has already been applied.');
           $this->transcript->addRuleTranscript($xscript);
           $rule_matches = false;
         } else {
@@ -102,7 +106,7 @@ final class HeraldEngine {
         }
         $rule_matches = false;
       }
-      $this->results[$id] = $rule_matches;
+      $this->results[$phid] = $rule_matches;
 
       if ($rule_matches) {
         foreach ($this->getRuleEffects($rule, $object) as $effect) {
@@ -210,25 +214,25 @@ final class HeraldEngine {
     HeraldRule $rule,
     HeraldAdapter $object) {
 
-    $id = $rule->getID();
+    $phid = $rule->getPHID();
 
-    if (isset($this->results[$id])) {
+    if (isset($this->results[$phid])) {
       // If we've already evaluated this rule because another rule depends
       // on it, we don't need to reevaluate it.
-      return $this->results[$id];
+      return $this->results[$phid];
     }
 
-    if (isset($this->stack[$id])) {
+    if (isset($this->stack[$phid])) {
       // We've recursed, fail all of the rules on the stack. This happens when
       // there's a dependency cycle with "Rule conditions match for rule ..."
       // conditions.
-      foreach ($this->stack as $rule_id => $ignored) {
-        $this->results[$rule_id] = false;
+      foreach ($this->stack as $rule_phid => $ignored) {
+        $this->results[$rule_phid] = false;
       }
       throw new HeraldRecursiveConditionsException();
     }
 
-    $this->stack[$id] = true;
+    $this->stack[$phid] = true;
 
     $all = $rule->getMustMatchAll();
 
@@ -239,40 +243,40 @@ final class HeraldEngine {
     $local_version = id(new HeraldRule())->getConfigVersion();
     if ($rule->getConfigVersion() > $local_version) {
       $reason = pht(
-        "Rule could not be processed, it was created with a newer version ".
-        "of Herald.");
+        'Rule could not be processed, it was created with a newer version '.
+        'of Herald.');
       $result = false;
     } else if (!$conditions) {
       $reason = pht(
-        "Rule failed automatically because it has no conditions.");
+        'Rule failed automatically because it has no conditions.');
       $result = false;
     } else if (!$rule->hasValidAuthor()) {
       $reason = pht(
-        "Rule failed automatically because its owner is invalid ".
-        "or disabled.");
+        'Rule failed automatically because its owner is invalid '.
+        'or disabled.');
       $result = false;
     } else if (!$this->canAuthorViewObject($rule, $object)) {
       $reason = pht(
-        "Rule failed automatically because it is a personal rule and its ".
-        "owner can not see the object.");
+        'Rule failed automatically because it is a personal rule and its '.
+        'owner can not see the object.');
       $result = false;
     } else if (!$this->canRuleApplyToObject($rule, $object)) {
       $reason = pht(
-        "Rule failed automatically because it is an object rule which is ".
-        "not relevant for this object.");
+        'Rule failed automatically because it is an object rule which is '.
+        'not relevant for this object.');
       $result = false;
     } else {
       foreach ($conditions as $condition) {
         $match = $this->doesConditionMatch($rule, $condition, $object);
 
         if (!$all && $match) {
-          $reason = "Any condition matched.";
+          $reason = 'Any condition matched.';
           $result = true;
           break;
         }
 
         if ($all && !$match) {
-          $reason = "Not all conditions matched.";
+          $reason = 'Not all conditions matched.';
           $result = false;
           break;
         }
@@ -280,10 +284,10 @@ final class HeraldEngine {
 
       if ($result === null) {
         if ($all) {
-          $reason = "All conditions matched.";
+          $reason = 'All conditions matched.';
           $result = true;
         } else {
-          $reason = "No conditions matched.";
+          $reason = 'No conditions matched.';
           $result = false;
         }
       }

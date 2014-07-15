@@ -1,13 +1,17 @@
 <?php
 
-/**
- * @group oauthserver
- */
 final class PhabricatorOAuthServerTokenController
-extends PhabricatorAuthController {
+  extends PhabricatorAuthController {
 
   public function shouldRequireLogin() {
     return false;
+  }
+
+  public function shouldAllowRestrictedParameter($parameter_name) {
+    if ($parameter_name == 'code') {
+      return true;
+    }
+    return parent::shouldAllowRestrictedParameter($parameter_name);
   }
 
   public function processRequest() {
@@ -130,4 +134,5 @@ extends PhabricatorAuthController {
       return $response;
     }
   }
+
 }

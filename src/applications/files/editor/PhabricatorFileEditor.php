@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group file
- */
 final class PhabricatorFileEditor
   extends PhabricatorApplicationTransactionEditor {
 
@@ -80,7 +77,9 @@ final class PhabricatorFileEditor
     return $body;
   }
 
-  protected function supportsFeed() {
+  protected function shouldPublishFeedStory(
+    PhabricatorLiskDAO $object,
+    array $xactions) {
     return true;
   }
 

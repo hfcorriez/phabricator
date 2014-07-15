@@ -1,14 +1,11 @@
 <?php
 
-/**
- * @group conduit
- */
 final class ConduitAPI_differential_finishpostponedlinters_Method
-  extends ConduitAPIMethod {
+  extends ConduitAPI_differential_Method {
 
   public function getMethodDescription() {
-    return "Update diff with new lint messages and mark postponed ".
-           "linters as finished.";
+    return 'Update diff with new lint messages and mark postponed '.
+           'linters as finished.';
   }
 
   public function defineParamTypes() {
@@ -74,7 +71,7 @@ final class ConduitAPI_differential_finishpostponedlinters_Method
       }
     }
 
-    // Load the lint messages currenty attached to the diff.  If this
+    // Load the lint messages currenty attached to the diff. If this
     // diff property doesn't exist, create it.
     $messages_property = id(new DifferentialDiffProperty())->loadOneWhere(
       'diffID = %d AND name = %s',

@@ -11,7 +11,7 @@ final class PhabricatorMailManagementSendTestWorkflow
           'Simulate sending mail. This may be useful to test your mail '.
           'configuration, or while developing new mail adapters.'))
       ->setExamples(
-        "**send-test** --to alincoln --subject hi < body.txt")
+        '**send-test** --to alincoln --subject hi < body.txt')
       ->setArguments(
         array(
           array(
@@ -126,12 +126,20 @@ final class PhabricatorMailManagementSendTestWorkflow
       $mail->setFrom($from->getPHID());
     }
 
+    foreach ($attach as $attachment) {
+      $data = Filesystem::readFile($attachment);
+      $name = basename($attachment);
+      $mime = Filesystem::getMimeType($attachment);
+      $file = new PhabricatorMetaMTAAttachment($data, $name, $mime);
+      $mail->addAttachment($file);
+    }
+
+    PhabricatorWorker::setRunAllTasksInProcess(true);
     $mail->save();
-    $mail->sendNow();
 
     $console->writeErr(
       "%s\n\n    phabricator/ $ ./bin/mail show-outbound --id %d\n\n",
-      pht("Mail sent! You can view details by running this command:"),
+      pht('Mail sent! You can view details by running this command:'),
       $mail->getID());
   }
 

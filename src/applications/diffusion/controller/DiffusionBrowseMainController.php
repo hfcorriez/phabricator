@@ -9,8 +9,9 @@ final class DiffusionBrowseMainController extends DiffusionBrowseController {
     // Figure out if we're browsing a directory, a file, or a search result
     // list. Then delegate to the appropriate controller.
 
-    $search = $request->getStr('grep');
-    if (strlen($search)) {
+    $grep = $request->getStr('grep');
+    $find = $request->getStr('find');
+    if (strlen($grep) || strlen($find)) {
       $controller = new DiffusionBrowseSearchController($request);
     } else {
       $results = DiffusionBrowseResultSet::newFromConduit(
@@ -18,7 +19,7 @@ final class DiffusionBrowseMainController extends DiffusionBrowseController {
           'diffusion.browsequery',
           array(
             'path' => $drequest->getPath(),
-            'commit' => $drequest->getCommit(),
+            'commit' => $drequest->getStableCommit(),
           )));
       $reason = $results->getReasonForEmptyResultSet();
       $is_file = ($reason == DiffusionBrowseResultSet::REASON_IS_FILE);

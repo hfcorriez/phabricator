@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @group phame
- */
 final class PhamePost extends PhameDAO
   implements
     PhabricatorPolicyInterface,
@@ -26,6 +23,19 @@ final class PhamePost extends PhameDAO
 
   private $blog;
 
+  public static function initializePost(
+    PhabricatorUser $blogger,
+    PhameBlog $blog) {
+
+    $post = id(new PhamePost())
+      ->setBloggerPHID($blogger->getPHID())
+      ->setBlogPHID($blog->getPHID())
+      ->setBlog($blog)
+      ->setDatePublished(0)
+      ->setVisibility(self::VISIBILITY_DRAFT);
+    return $post;
+  }
+
   public function setBlog(PhameBlog $blog) {
     $this->blog = $blog;
     return $this;
@@ -44,6 +54,10 @@ final class PhamePost extends PhameDAO
     }
     $uri = '/phame/post/view/'.$this->getID().'/';
     return PhabricatorEnv::getProductionURI($uri);
+  }
+
+  public function getEditURI() {
+    return '/phame/post/edit/'.$this->getID().'/';
   }
 
   public function isDraft() {
@@ -80,6 +94,22 @@ final class PhamePost extends PhameDAO
   public function generatePHID() {
     return PhabricatorPHID::generateNewPHID(
       PhabricatorPhamePHIDTypePost::TYPECONST);
+  }
+
+  public function toDictionary() {
+    return array(
+      'id'            => $this->getID(),
+      'phid'          => $this->getPHID(),
+      'blogPHID'      => $this->getBlogPHID(),
+      'bloggerPHID'   => $this->getBloggerPHID(),
+      'viewURI'       => $this->getViewURI(),
+      'title'         => $this->getTitle(),
+      'phameTitle'    => $this->getPhameTitle(),
+      'body'          => $this->getBody(),
+      'summary'       => PhabricatorMarkupEngine::summarize($this->getBody()),
+      'datePublished' => $this->getDatePublished(),
+      'published'     => !$this->isDraft(),
+    );
   }
 
   public static function getVisibilityOptionsForSelect() {

@@ -2,85 +2,48 @@
 
 final class HeraldTranscriptListController extends HeraldController {
 
-  public function processRequest() {
+  private $queryKey;
 
-    $request = $this->getRequest();
-    $user = $request->getUser();
+  public function buildSideNavView($for_app = false) {
+    $user = $this->getRequest()->getUser();
 
-    $pager = new AphrontCursorPagerView();
-    $pager->readFromRequest($request);
+    $nav = new AphrontSideNavFilterView();
+    $nav->setBaseURI(new PhutilURI($this->getApplicationURI()));
 
-    $transcripts = id(new HeraldTranscriptQuery())
+    if ($for_app) {
+      $nav->addFilter('new', pht('Create Rule'));
+    }
+
+    id(new HeraldTranscriptSearchEngine())
       ->setViewer($user)
-      ->needPartialRecords(true)
-      ->executeWithCursorPager($pager);
+      ->addNavigationItems($nav->getMenu());
 
-    // Render the table.
-    $handles = array();
-    if ($transcripts) {
-      $phids = mpull($transcripts, 'getObjectPHID', 'getObjectPHID');
-      $handles = $this->loadViewerHandles($phids);
-    }
+    $nav->selectFilter(null);
 
-    $rows = array();
-    foreach ($transcripts as $xscript) {
-      $rows[] = array(
-        phabricator_date($xscript->getTime(), $user),
-        phabricator_time($xscript->getTime(), $user),
-        $handles[$xscript->getObjectPHID()]->renderLink(),
-        $xscript->getDryRun() ? pht('Yes') : '',
-        number_format((int)(1000 * $xscript->getDuration())).' ms',
-        phutil_tag(
-          'a',
-          array(
-            'href' => '/herald/transcript/'.$xscript->getID().'/',
-            'class' => 'button small grey',
-          ),
-          pht('View Transcript')),
-      );
-    }
+    return $nav;
+  }
 
-    $table = new AphrontTableView($rows);
-    $table->setHeaders(
-      array(
-        pht('Date'),
-        pht('Time'),
-        pht('Object'),
-        pht('Dry Run'),
-        pht('Duration'),
-        pht('View'),
-      ));
-    $table->setColumnClasses(
-      array(
-        '',
-        'right',
-        'wide wrap',
-        '',
-        '',
-        'action',
-      ));
+  public function buildApplicationCrumbs() {
+    $crumbs = parent::buildApplicationCrumbs();
 
-    // Render the whole page.
-    $panel = new AphrontPanelView();
-    $panel->setHeader(pht('Herald Transcripts'));
-    $panel->appendChild($table);
-    $panel->appendChild($pager);
-    $panel->setNoBackground();
+    $crumbs->addTextCrumb(
+      pht('Transcripts'),
+      $this->getApplicationURI('transcript/'));
+    return $crumbs;
+  }
 
-    $nav = $this->buildSideNavView();
-    $nav->selectFilter('transcript');
-    $nav->appendChild($panel);
+  public function willProcessRequest(array $data) {
+    $this->queryKey = idx($data, 'queryKey');
+  }
 
-    $crumbs = id($this->buildApplicationCrumbs())
-      ->addTextCrumb(pht('Transcripts'));
-    $nav->setCrumbs($crumbs);
+  public function processRequest() {
+    $request = $this->getRequest();
+    $controller = id(new PhabricatorApplicationSearchController($request))
+      ->setQueryKey($this->queryKey)
+      ->setSearchEngine(new HeraldTranscriptSearchEngine())
+      ->setNavigation($this->buildSideNavView());
 
-    return $this->buildApplicationPage(
-      $nav,
-      array(
-        'title' => pht('Herald Transcripts'),
-        'device' => true,
-      ));
+    return $this->delegateToController($controller);
   }
 
 }

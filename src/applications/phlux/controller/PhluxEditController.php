@@ -48,7 +48,7 @@ final class PhluxEditController extends PhluxController {
         if (!strlen($key)) {
           $errors[] = pht('Variable key is required.');
           $e_key = pht('Required');
-        } else if (!preg_match('/^[a-z0-9.-]+$/', $key)) {
+        } else if (!preg_match('/^[a-z0-9.-]+\z/', $key)) {
           $errors[] = pht(
             'Variable key "%s" must contain only lowercase letters, digits, '.
             'period, and hyphen.',
@@ -109,11 +109,6 @@ final class PhluxEditController extends PhluxController {
       }
     }
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())
-        ->setErrors($errors);
-    }
-
     $policies = id(new PhabricatorPolicyQuery())
       ->setViewer($user)
       ->setObject($var)
@@ -172,7 +167,7 @@ final class PhluxEditController extends PhluxController {
 
     $form_box = id(new PHUIObjectBoxView())
       ->setHeaderText($title)
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setForm($form);
 
     return $this->buildApplicationPage(
@@ -182,7 +177,6 @@ final class PhluxEditController extends PhluxController {
       ),
       array(
         'title' => $title,
-        'device' => true,
       ));
   }
 

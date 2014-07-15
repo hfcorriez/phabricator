@@ -3,6 +3,10 @@
 final class PhabricatorFeedSearchEngine
   extends PhabricatorApplicationSearchEngine {
 
+  public function getResultTypeDescription() {
+    return pht('Feed Stories');
+  }
+
   public function buildSavedQueryFromRequest(AphrontRequest $request) {
     $saved = new PhabricatorSavedQuery();
 
@@ -80,7 +84,7 @@ final class PhabricatorFeedSearchEngine
           ->setValue($user_handles))
       ->appendChild(
         id(new AphrontFormTokenizerControl())
-          ->setDatasource('/typeahead/common/projects/')
+          ->setDatasource(new PhabricatorProjectDatasource())
           ->setName('projectPHIDs')
           ->setLabel(pht('Include Projects'))
           ->setValue($proj_handles))
@@ -122,6 +126,25 @@ final class PhabricatorFeedSearchEngine
     }
 
     return parent::buildSavedQueryFromBuiltin($query_key);
+  }
+
+  protected function renderResultList(
+    array $objects,
+    PhabricatorSavedQuery $query,
+    array $handles) {
+
+    $builder = new PhabricatorFeedBuilder($objects);
+
+    if ($this->isPanelContext()) {
+      $builder->setShowHovercards(false);
+    } else {
+      $builder->setShowHovercards(true);
+    }
+
+    $builder->setUser($this->requireViewer());
+    $view = $builder->buildView();
+
+    return phutil_tag_div('phabricator-feed-frame', $view);
   }
 
 }

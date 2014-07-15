@@ -3,7 +3,7 @@
 final class PhabricatorApplicationDiffusion extends PhabricatorApplication {
 
   public function getShortDescription() {
-    return pht('Repository Browser');
+    return pht('Host and Browse Repositories');
   }
 
   public function getBaseURI() {
@@ -14,8 +14,12 @@ final class PhabricatorApplicationDiffusion extends PhabricatorApplication {
     return 'diffusion';
   }
 
+  public function isPinnedByDefault(PhabricatorUser $viewer) {
+    return true;
+  }
+
   public function getHelpURI() {
-    return PhabricatorEnv::getDoclink('article/Diffusion_User_Guide.html');
+    return PhabricatorEnv::getDoclink('Diffusion User Guide');
   }
 
   public function getFactObjectsForAnalysis() {
@@ -47,9 +51,10 @@ final class PhabricatorApplicationDiffusion extends PhabricatorApplication {
         'new/' => 'DiffusionRepositoryNewController',
         '(?P<edit>create)/' => 'DiffusionRepositoryCreateController',
         '(?P<edit>import)/' => 'DiffusionRepositoryCreateController',
-        'pushlog/(?:query/(?P<queryKey>[^/]+)/)?'
-          => 'DiffusionPushLogListController',
-
+        'pushlog/' => array(
+          '(?:query/(?P<queryKey>[^/]+)/)?' => 'DiffusionPushLogListController',
+          'view/(?P<id>\d+)/' => 'DiffusionPushEventViewController',
+        ),
         '(?P<callsign>[A-Z]+)/' => array(
           '' => 'DiffusionRepositoryController',
 
@@ -84,6 +89,7 @@ final class PhabricatorApplicationDiffusion extends PhabricatorApplication {
             'hosting/' => 'DiffusionRepositoryEditHostingController',
             '(?P<serve>serve)/' => 'DiffusionRepositoryEditHostingController',
           ),
+          'pathtree/(?P<dblob>.*)' => 'DiffusionPathTreeController',
           'mirror/' => array(
             'edit/(?:(?P<id>\d+)/)?' => 'DiffusionMirrorEditController',
             'delete/(?P<id>\d+)/' => 'DiffusionMirrorDeleteController',
@@ -112,10 +118,6 @@ final class PhabricatorApplicationDiffusion extends PhabricatorApplication {
         'lint/' => 'DiffusionLintController',
       ),
     );
-  }
-
-  public function getApplicationGroup() {
-    return self::GROUP_CORE;
   }
 
   public function getApplicationOrder() {

@@ -2,7 +2,7 @@
 
 final class PhabricatorApplicationSubscriptions extends PhabricatorApplication {
 
-  public function shouldAppearInLaunchView() {
+  public function isLaunchable() {
     return false;
   }
 
@@ -21,9 +21,11 @@ final class PhabricatorApplicationSubscriptions extends PhabricatorApplication {
       '/subscriptions/' => array(
         '(?P<action>add|delete)/'.
         '(?P<phid>[^/]+)/' => 'PhabricatorSubscriptionsEditController',
+        'list/(?P<phid>[^/]+)/' => 'PhabricatorSubscriptionsListController',
+        'transaction/(?P<type>add|rem)/(?<phid>[^/]+)/' =>
+          'PhabricatorSubscriptionsTransactionController',
       ),
     );
   }
 
 }
-

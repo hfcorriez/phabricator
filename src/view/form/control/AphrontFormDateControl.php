@@ -87,7 +87,7 @@ final class AphrontFormDateControl extends AphrontFormControl {
     $result = parent::setValue($epoch);
 
     if ($epoch === null) {
-      return;
+      return $result;
     }
 
     $readable = $this->formatTime($epoch, 'Y!m!d!g:i A');
@@ -286,7 +286,7 @@ final class AphrontFormDateControl extends AphrontFormControl {
 
     $user = $this->getUser();
     if (!$this->getUser()) {
-      throw new Exception("Call setUser() before getTimezone()!");
+      throw new Exception('Call setUser() before getTimezone()!');
     }
 
     $user_zone = $user->getTimezoneIdentifier();

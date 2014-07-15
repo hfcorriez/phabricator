@@ -98,10 +98,6 @@ final class HeraldNewController extends HeraldController {
     $content_type = $request->getStr('content_type');
     $rule_type = $request->getStr('rule_type');
 
-    if ($errors) {
-      $errors = id(new AphrontErrorView())->setErrors($errors);
-    }
-
     $form = id(new AphrontFormView())
       ->setUser($viewer)
       ->setAction($this->getApplicationURI('new/'));
@@ -203,7 +199,7 @@ final class HeraldNewController extends HeraldController {
           ->addCancelButton($cancel_uri, $cancel_text));
 
     $form_box = id(new PHUIObjectBoxView())
-      ->setFormError($errors)
+      ->setFormErrors($errors)
       ->setHeaderText(pht('Create Herald Rule'))
       ->setForm($form);
 
@@ -218,7 +214,6 @@ final class HeraldNewController extends HeraldController {
       ),
       array(
         'title' => pht('Create Herald Rule'),
-        'device' => true,
       ));
   }
 
@@ -271,7 +266,7 @@ final class HeraldNewController extends HeraldController {
           'Object rules notify anyone about events. They are bound to an '.
           'object (like a repository) and can only act on that object. You '.
           'must be able to edit an object to create object rules for it. '.
-          'Other users who an edit the object can edit its rules.'),
+          'Other users who can edit the object can edit its rules.'),
       HeraldRuleTypeConfig::RULE_TYPE_GLOBAL =>
         array(
           pht(
